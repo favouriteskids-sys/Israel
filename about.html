@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us — Real Stack</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="logo">Real<span>Stack</span></div>
+        <div class="links">
+            <a href="index.html">Home</a>
+            <a href="properties.html">Properties</a>
+            <a href="about.html" class="active">About</a>
+            <a href="contact.html">Contact Us</a>
+            <a href="contact.html" class="btn btn-primary">Get Started</a>
+        </div>
+    </nav>
+
+    <section class="page-hero">
+        <h1>About Real Stack</h1>
+        <p>The platform built to help agents, landlords, and investors manage real estate with confidence.</p>
+    </section>
+
+    <section class="section">
+        <div class="about-grid">
+            <div class="panel">
+                <h3>Our Story</h3>
+                <p>
+                    Real Stack started with a simple observation: real estate professionals spend too much
+                    time juggling spreadsheets, sticky notes, and scattered tools. We built one platform
+                    that brings listings, deals, clients, and documents together in a single place.
+                </p>
+                <p>
+                    Today, hundreds of agents and landlords across Africa trust Real Stack to manage their
+                    portfolios — from first viewing to final signature.
+                </p>
+            </div>
+            <div class="panel">
+                <h3>Our Mission</h3>
+                <p>
+                    We believe great tools should make complex work feel simple. Our mission is to give
+                    every real estate professional the technology to close more deals in less time,
+                    no matter how big or small their portfolio.
+                </p>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="num" id="statDeals">0</div>
+                        <div class="label">Deals Closed</div>
+                    </div>
+                    <div class="stat">
+                        <div class="num" id="statAgents">0</div>
+                        <div class="label">Agents</div>
+                    </div>
+                    <div class="stat">
+                        <div class="num" id="statCities">0</div>
+                        <div class="label">Cities</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="section-title">
+            <h2>Meet the Team</h2>
+            <p>The people behind Real Stack.</p>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <div class="icon">🧑‍💼</div>
+                <h3>Senayon Wusu</h3>
+                <p>Founder &amp; CEO — former broker with 12 years in the field.</p>
+            </div>
+            <div class="card">
+                <div class="icon">🧑‍💻</div>
+                <h3>Amara Okafor</h3>
+                <p>Head of Product — designs workflows agents actually love.</p>
+            </div>
+            <div class="card">
+                <div class="icon">👩‍💻</div>
+                <h3>James Mensah</h3>
+                <p>Lead Engineer — keeps the platform fast, safe, and reliable.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <h2>Want to Work With Us?</h2>
+        <p>Whether you are buying, selling, or renting, our team is ready to help.</p>
+        <a href="contact.html" class="btn btn-primary">Get in Touch</a>
+    </section>
+
+    <footer>
+        <div class="logo">Real<span>Stack</span></div>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="properties.html">Properties</a>
+            <a href="about.html">About</a>
+            <a href="contact.html">Contact</a>
+        </div>
+        <p>&copy; 2026 Real Stack. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        function animateCount(id, target, suffix) {
+            const el = document.getElementById(id);
+            let current = 0;
+            const step = Math.max(1, Math.ceil(target / 60));
+            const timer = setInterval(() => {
+                current += step;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                el.textContent = current.toLocaleString() + suffix;
+            }, 20);
+        }
+
+        animateCount('statDeals', 2400, '+');
+        animateCount('statAgents', 380, '+');
+        animateCount('statCities', 15, '');
+    </script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Stack — Real Estate, Made Simple</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="logo">Real<span>Stack</span></div>
+        <div class="links">
+            <a href="index.html" class="active">Home</a>
+            <a href="properties.html">Properties</a>
+            <a href="about.html">About</a>
+            <a href="contact.html">Contact Us</a>
+            <a href="properties.html" class="btn btn-primary">Get Started</a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="text">
+            <span class="badge">Property management, simplified</span>
+            <h1>Find, Manage &amp; Grow Your Real Estate With <span>Real Stack</span></h1>
+            <p>
+                One platform for listing properties, tracking sales, and managing
+                every deal in your portfolio — from first viewing to final signature.
+            </p>
+            <div class="cta">
+                <a href="properties.html" class="btn btn-primary">Explore Properties</a>
+                <a href="contact.html" class="btn btn-ghost">Book a Demo</a>
+                <button class="btn btn-ghost" onclick="openModal()">Talk to an Agent</button>
+            </div>
+            <div class="rating">
+                <div class="stars" id="stars">
+                    <button class="star" data-value="1" aria-label="Rate 1 star">★</button>
+                    <button class="star" data-value="2" aria-label="Rate 2 stars">★</button>
+                    <button class="star" data-value="3" aria-label="Rate 3 stars">★</button>
+                    <button class="star" data-value="4" aria-label="Rate 4 stars">★</button>
+                    <button class="star" data-value="5" aria-label="Rate 5 stars">★</button>
+                </div>
+                <span class="rating-count" id="ratingCount">0</span>
+                <span class="rating-note" id="ratingNote">Rate us</span>
+            </div>
+        </div>
+        <div class="visual">
+            <div class="badge">Property of the week</div>
+            <h3>Luxury 4-Bedroom Home</h3>
+            <p>Lagos, Nigeria — $350,000</p>
+        </div>
+    </section>
+
+    <section class="section" id="features">
+        <div class="section-title">
+            <h2>Everything Your Real Estate Business Needs</h2>
+            <p>
+                Built for agents, landlords, and investors who want to close more
+                deals in less time.
+            </p>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <div class="icon">🏠</div>
+                <h3>Smart Property Listings</h3>
+                <p>Create stunning listings in minutes with photos, pricing, and location tools that get your properties seen.</p>
+            </div>
+            <div class="card">
+                <div class="icon">📊</div>
+                <h3>Deal Tracking</h3>
+                <p>Follow every offer, viewing, and negotiation on a clear pipeline so no opportunity ever slips through.</p>
+            </div>
+            <div class="card">
+                <div class="icon">🤝</div>
+                <h3>Client Management</h3>
+                <p>Keep all your buyers, sellers, and tenants organized in one place with notes, contacts, and history.</p>
+            </div>
+            <div class="card">
+                <div class="icon">💰</div>
+                <h3>Rent &amp; Payment Collection</h3>
+                <p>Automate rent collection and payment reminders so cash flow stays steady every single month.</p>
+            </div>
+            <div class="card">
+                <div class="icon">📈</div>
+                <h3>Market Insights</h3>
+                <p>Understand local pricing trends and demand with clear, up-to-date market data for smarter decisions.</p>
+            </div>
+            <div class="card">
+                <div class="icon">🔒</div>
+                <h3>Secure Document Vault</h3>
+                <p>Store contracts, titles, and agreements safely in the cloud with bank-grade encryption.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="featured">
+        <div class="section-title">
+            <h2>Featured Properties</h2>
+            <p>Hand-picked homes ready for you to explore right now.</p>
+        </div>
+        <div class="property-grid" id="featuredGrid"></div>
+        <div style="text-align:center; margin-top: 40px;">
+            <a href="properties.html" class="btn btn-primary">View All Properties</a>
+        </div>
+    </section>
+
+    <section class="cta-section" id="contact">
+        <h2>Ready to Take Your Portfolio to the Next Level?</h2>
+        <p>Join hundreds of real estate professionals already growing their business with Real Stack.</p>
+        <a href="contact.html" class="btn btn-primary">Contact Us Today</a>
+    </section>
+
+    <footer>
+        <div class="logo">Real<span>Stack</span></div>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="properties.html">Properties</a>
+            <a href="about.html">About</a>
+            <a href="contact.html">Contact</a>
+        </div>
+        <p>&copy; 2026 Real Stack. All rights reserved.</p>
+    </footer>
+
+    <div class="modal-overlay" id="agentModal">
+        <div class="modal">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h3>Talk to an Agent</h3>
+            <div class="agent-card">
+                <p><strong>Name:</strong> Senayon Wusu</p>
+                <p><strong>Phone:</strong> +234 800 123 4567</p>
+                <p><strong>Email:</strong> senayon@realstack.com</p>
+                <p><strong>Address:</strong> 12 Adeola Odeku Street, Victoria Island, Lagos, Nigeria</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        document.getElementById('agentModal').addEventListener('click', function (event) {
+            if (event.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

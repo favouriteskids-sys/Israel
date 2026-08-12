@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Properties — Real Stack</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="logo">Real<span>Stack</span></div>
+        <div class="links">
+            <a href="index.html">Home</a>
+            <a href="properties.html" class="active">Properties</a>
+            <a href="about.html">About</a>
+            <a href="contact.html">Contact Us</a>
+            <a href="contact.html" class="btn btn-primary">Get Started</a>
+        </div>
+    </nav>
+
+    <section class="page-hero">
+        <h1>Browse Properties</h1>
+        <p>Search our portfolio of homes for sale and rent across the continent.</p>
+    </section>
+
+    <section class="section">
+        <div class="filters">
+            <input type="text" id="searchInput" placeholder="Search by name or location...">
+            <select id="typeFilter">
+                <option value="all">All Types</option>
+                <option value="sale">For Sale</option>
+                <option value="rent">For Rent</option>
+            </select>
+            <select id="priceFilter">
+                <option value="all">Any Price</option>
+                <option value="lt200k">Under $200,000</option>
+                <option value="200to500k">$200,000 - $500,000</option>
+                <option value="gt500k">Over $500,000</option>
+            </select>
+            <button class="btn btn-primary" onclick="applyFilters()">Filter</button>
+        </div>
+        <div class="property-grid" id="propertyGrid"></div>
+        <p class="section-title" id="emptyMessage" style="display:none; margin-top: 32px;">
+            No properties match your filters. Try adjusting your search.
+        </p>
+    </section>
+
+    <footer>
+        <div class="logo">Real<span>Stack</span></div>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="properties.html">Properties</a>
+            <a href="about.html">About</a>
+            <a href="contact.html">Contact</a>
+        </div>
+        <p>&copy; 2026 Real Stack. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        function applyFilters() {
+            const term = document.getElementById('searchInput').value.toLowerCase().trim();
+            const type = document.getElementById('typeFilter').value;
+            const price = document.getElementById('priceFilter').value;
+
+            const results = PROPERTIES.filter((p) => {
+                const matchTerm = !term ||
+                    p.name.toLowerCase().includes(term) ||
+                    p.location.toLowerCase().includes(term);
+                const matchType = type === 'all' || p.type === type;
+
+                let matchPrice = true;
+                if (price === 'lt200k') matchPrice = p.price < 200000;
+                else if (price === '200to500k') matchPrice = p.price >= 200000 && p.price <= 500000;
+                else if (price === 'gt500k') matchPrice = p.price > 500000;
+
+                return matchTerm && matchType && matchPrice;
+            });
+
+            renderPropertyGrid('propertyGrid', results);
+            document.getElementById('emptyMessage').style.display = results.length ? 'none' : 'block';
+        }
+
+        document.getElementById('searchInput').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') applyFilters();
+        });
+
+        applyFilters();
+    </script>
+</body>
+</html>
