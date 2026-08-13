@@ -3,12 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real Stack — Real Estate, Made Simple</title>
+    <title>EstateFlow — Real Estate, Made Simple</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        .section-title h2::after {
+            content: "";
+            display: block;
+            width: 64px;
+            height: 4px;
+            border-radius: 999px;
+            margin: 10px auto 0;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        .grid .card {
+            border-top: none;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .grid .card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        .grid .card .icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+        }
+
+        .grid .card:nth-child(1) .icon { background: linear-gradient(135deg, #2b4bd8, #7c3aed); }
+        .grid .card:nth-child(2) .icon { background: linear-gradient(135deg, #0e9f6e, #06b6d4); }
+        .grid .card:nth-child(3) .icon { background: linear-gradient(135deg, #f59e0b, #f0a500); }
+        .grid .card:nth-child(4) .icon { background: linear-gradient(135deg, #e11d48, #f97316); }
+        .grid .card:nth-child(5) .icon { background: linear-gradient(135deg, #0891b2, #0e9f6e); }
+        .grid .card:nth-child(6) .icon { background: linear-gradient(135deg, #7c3aed, #e11d48); }
+
+        .hero h1 {
+            font-size: 58px;
+            line-height: 1.1;
+            letter-spacing: -1.5px;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(90deg, #f0a500, #ffd76e, #f0a500);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 3.5s linear infinite;
+            position: relative;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+
+        .hero .visual {
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            background:
+                radial-gradient(circle at 70% 20%, rgba(240, 165, 0, 0.35), transparent 50%),
+                rgba(255, 255, 255, 0.12);
+        }
+
+        .hero .visual h3 {
+            background: linear-gradient(90deg, #ffffff, #f0a500);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
 </head>
 <body>
     <nav class="nav">
-        <div class="logo">Real<span>Stack</span></div>
+        <div class="logo">Estate<span>Flow</span></div>
         <div class="links">
             <a href="index.html" class="active">Home</a>
             <a href="properties.html">Properties</a>
@@ -21,7 +100,7 @@
     <section class="hero">
         <div class="text">
             <span class="badge">Property management, simplified</span>
-            <h1>Find, Manage &amp; Grow Your Real Estate With <span>Real Stack</span></h1>
+            <h1>Find, Manage &amp; Grow Your Real Estate With <span>EstateFlow</span></h1>
             <p>
                 One platform for listing properties, tracking sales, and managing
                 every deal in your portfolio — from first viewing to final signature.
@@ -105,41 +184,37 @@
 
     <section class="cta-section" id="contact">
         <h2>Ready to Take Your Portfolio to the Next Level?</h2>
-        <p>Join hundreds of real estate professionals already growing their business with Real Stack.</p>
+        <p>Join hundreds of real estate professionals already growing their business with EstateFlow.</p>
         <a href="contact.html" class="btn btn-primary">Contact Us Today</a>
     </section>
 
     <footer>
-        <div class="logo">Real<span>Stack</span></div>
+        <div class="logo">Estate<span>Flow</span></div>
         <div class="footer-links">
             <a href="index.html">Home</a>
             <a href="properties.html">Properties</a>
             <a href="about.html">About</a>
             <a href="contact.html">Contact</a>
         </div>
-        <p>&copy; 2026 Real Stack. All rights reserved.</p>
+        <p>&copy; <span data-year>2026</span> EstateFlow. All rights reserved.</p>
     </footer>
 
     <div class="modal-overlay" id="agentModal">
         <div class="modal">
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <button class="modal-close">&times;</button>
             <h3>Talk to an Agent</h3>
             <div class="agent-card">
                 <p><strong>Name:</strong> Senayon Wusu</p>
                 <p><strong>Phone:</strong> +234 800 123 4567</p>
-                <p><strong>Email:</strong> senayon@realstack.com</p>
+                <p><strong>Email:</strong> senayon@estateflow.com</p>
                 <p><strong>Address:</strong> 12 Adeola Odeku Street, Victoria Island, Lagos, Nigeria</p>
             </div>
         </div>
     </div>
 
+    <script src="auth.js"></script>
     <script src="script.js"></script>
-    <script>
-        document.getElementById('agentModal').addEventListener('click', function (event) {
-            if (event.target === this) {
-                closeModal();
-            }
-        });
-    </script>
+    <script src="assistant.js"></script>
+    <script src="theme.js"></script>
 </body>
 </html>
