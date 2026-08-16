@@ -83,6 +83,201 @@
             background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+
+        .testimonials {
+            padding: 80px 48px;
+        }
+
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .testimonial {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 28px;
+            box-shadow: 0 4px 16px rgba(31, 42, 68, 0.08);
+            border-left: 4px solid var(--accent);
+        }
+
+        .testimonial .stars {
+            color: var(--accent);
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .testimonial p {
+            color: #4a5570;
+            font-size: 15px;
+            margin-bottom: 16px;
+        }
+
+        .testimonial .author {
+            font-weight: 700;
+            color: #1f2a44;
+            font-size: 14px;
+        }
+
+        .testimonial .role {
+            color: var(--primary);
+            font-size: 13px;
+        }
+
+        .pricing {
+            padding: 80px 48px;
+            background: #ffffff;
+        }
+
+        .price-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .price-card {
+            background: var(--bg);
+            border-radius: 16px;
+            padding: 36px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .price-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 28px rgba(31, 42, 68, 0.12);
+        }
+
+        .price-card.featured {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #ffffff;
+        }
+
+        .price-card .plan {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .price-card .price {
+            font-size: 44px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .price-card .price small {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .price-card .desc {
+            color: #5b6478;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .price-card.featured .desc {
+            color: #dfe5ff;
+        }
+
+        .price-card ul {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 28px;
+            padding: 0;
+        }
+
+        .price-card ul li {
+            padding: 6px 0;
+            font-size: 14px;
+            color: #4a5570;
+        }
+
+        .price-card.featured ul li {
+            color: #dfe5ff;
+        }
+
+        .price-card ul li::before {
+            content: "✓ ";
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .signup {
+            padding: 80px 48px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            text-align: center;
+            color: #ffffff;
+        }
+
+        .signup h2 {
+            font-size: 34px;
+            margin-bottom: 8px;
+        }
+
+        .signup p {
+            color: #dfe5ff;
+            max-width: 520px;
+            margin: 0 auto 32px;
+        }
+
+        .signup-form {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        .signup-form input {
+            padding: 14px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            min-width: 160px;
+            outline: none;
+        }
+
+        .signup-form button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            background: var(--accent);
+            color: #1f2a44;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .signup-form button:hover {
+            transform: translateY(-2px);
+        }
+
+        .signup-success {
+            display: none;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 10px;
+            padding: 14px 20px;
+            margin-top: 20px;
+            font-weight: 600;
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .signup-success.show {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -92,6 +287,7 @@
             <a href="index.html" class="active">Home</a>
             <a href="properties.html">Properties</a>
             <a href="about.html">About</a>
+            <a href="#pricing">Pricing</a>
             <a href="contact.html">Contact Us</a>
             <a href="properties.html" class="btn btn-primary">Get Started</a>
         </div>
@@ -171,6 +367,33 @@
         </div>
     </section>
 
+    <section class="section testimonials">
+        <div class="section-title">
+            <h2>Loved by Agents &amp; Investors</h2>
+            <p>Real professionals, real results — here's what they say.</p>
+        </div>
+        <div class="testimonial-grid">
+            <div class="testimonial">
+                <div class="stars">★★★★★</div>
+                <p>"EstateFlow doubled the speed of our deals. I closed three sales in the first month."</p>
+                <div class="author">Adaeze Okonkwo</div>
+                <div class="role">Real Estate Agent, Abuja</div>
+            </div>
+            <div class="testimonial">
+                <div class="stars">★★★★★</div>
+                <p>"Managing 40 units across two cities used to be chaos. Now it runs itself."</p>
+                <div class="author">Tunde Bakare</div>
+                <div class="role">Property Landlord, Lagos</div>
+            </div>
+            <div class="testimonial">
+                <div class="stars">★★★★★</div>
+                <p>"The market insights alone paid for the subscription ten times over."</p>
+                <div class="author">Chiamaka Eze</div>
+                <div class="role">Real Estate Investor, Port Harcourt</div>
+            </div>
+        </div>
+    </section>
+
     <section class="section" id="featured">
         <div class="section-title">
             <h2>Featured Properties</h2>
@@ -180,6 +403,62 @@
         <div style="text-align:center; margin-top: 40px;">
             <a href="properties.html" class="btn btn-primary">View All Properties</a>
         </div>
+    </section>
+
+    <section class="pricing" id="pricing">
+        <div class="section-title">
+            <h2>Simple, Honest Pricing</h2>
+            <p>Start free. Upgrade when you're ready to grow.</p>
+        </div>
+        <div class="price-grid">
+            <div class="price-card">
+                <div class="plan">Starter</div>
+                <div class="price">$0<small>/month</small></div>
+                <div class="desc">For new agents trying EstateFlow</div>
+                <ul>
+                    <li>Up to 5 property listings</li>
+                    <li>Basic client management</li>
+                    <li>Community support</li>
+                </ul>
+                <a href="#signup" class="btn btn-primary">Get Started Free</a>
+            </div>
+            <div class="price-card featured">
+                <div class="plan">Pro</div>
+                <div class="price">$29<small>/month</small></div>
+                <div class="desc">For growing agents ready to close more</div>
+                <ul>
+                    <li>Unlimited listings</li>
+                    <li>Deal pipeline &amp; tracking</li>
+                    <li>Rent &amp; payment collection</li>
+                    <li>Market insights</li>
+                </ul>
+                <a href="#signup" class="btn btn-primary">Start Pro Trial</a>
+            </div>
+            <div class="price-card">
+                <div class="plan">Business</div>
+                <div class="price">$79<small>/month</small></div>
+                <div class="desc">For agencies and portfolio owners</div>
+                <ul>
+                    <li>Everything in Pro</li>
+                    <li>Multi-agent team access</li>
+                    <li>Document vault &amp; e-signatures</li>
+                    <li>Priority support</li>
+                </ul>
+                <a href="#signup" class="btn btn-primary">Contact Sales</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="signup" id="signup">
+        <h2>Start Building Your Real Estate Business</h2>
+        <p>Leave your details and our team will set you up within 24 hours — free, no card required.</p>
+        <form class="signup-form" id="signupForm">
+            <input type="text" id="signupName" placeholder="Your name" required>
+            <input type="email" id="signupEmail" placeholder="Email address" required>
+            <input type="tel" id="signupPhone" placeholder="Phone number" required>
+            <button type="submit">Get Started</button>
+        </form>
+        <div class="signup-success" id="signupSuccess">Thank you! We'll contact you within 24 hours to get you set up.</div>
     </section>
 
     <section class="cta-section" id="contact">
@@ -216,5 +495,12 @@
     <script src="script.js"></script>
     <script src="assistant.js"></script>
     <script src="theme.js"></script>
+    <script>
+        document.getElementById('signupForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            document.getElementById('signupSuccess').classList.add('show');
+            this.reset();
+        });
+    </script>
 </body>
 </html>
