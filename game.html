@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stack Hero — Defend the Real Stack</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(160deg, #1b2f8a 0%, #2b4bd8 60%, #14205c 100%);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 34px;
+            margin: 16px 0 4px;
+        }
+
+        h1 span {
+            color: #f0a500;
+        }
+
+        p.subtitle {
+            color: #c3ccf2;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .wrap {
+            position: relative;
+            display: inline-block;
+        }
+
+        canvas {
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+            background: #eef1ff;
+            display: block;
+            cursor: crosshair;
+        }
+
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            width: 800px;
+            padding: 10px 0;
+            font-size: 15px;
+            color: #dfe5ff;
+        }
+
+        .hud b {
+            color: #f0a500;
+        }
+
+        .controls {
+            margin-top: 14px;
+            font-size: 13px;
+            color: #aab4cc;
+        }
+
+        .controls kbd {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 5px;
+            padding: 2px 7px;
+            margin: 0 2px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stack <span>Hero</span></h1>
+    <p class="subtitle">Defend the Real Stack. Don't let it collapse.</p>
+
+    <div class="wrap">
+        <div class="hud">
+            <span>Score: <b id="score">0</b></span>
+            <span>Floors: <b id="floors">8</b></span>
+            <span>Wave: <b id="wave">1</b></span>
+        </div>
+        <canvas id="game" width="800" height="600"></canvas>
+    </div>
+
+    <div class="controls">
+        <kbd>A</kbd><kbd>D</kbd> / <kbd>&larr;</kbd><kbd>&rarr;</kbd> Move &nbsp;•&nbsp;
+        <kbd>Mouse</kbd> Aim &nbsp;•&nbsp; <kbd>Click</kbd> Shoot &nbsp;•&nbsp;
+        <kbd>P</kbd> Pause
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const floorsEl = document.getElementById('floors');
+        const waveEl = document.getElementById('wave');
+
+        const W = canvas.width;
+        const H = canvas.height;
+
+        const PLAYER_W = 44;
+        const PLAYER_H = 54;
+        const PLAYER_SPEED = 5.5;
+
+        let state = 'start'; // start | playing | over | paused
+        let score = 0;
+        let wave = 1;
+        let hero = { x: W / 2 - PLAYER_W / 2, y: H - 120 };
+        let mouse = { x: W / 2, y: H / 2 };
+        let bullets = [];
+        let enemies = [];
+        let spawnTimer = 0;
+
+        const FLOOR_W = 150;
+        const FLOOR_H = 16;
+        let floors = [];
+        let floorX = W / 2 - FLOOR_W / 2;
+        let floorBaseY = H - 90;
+
+        function resetFloors() {
+            floors = [];
+            for (let i = 0; i < 8; i++) {
+                floors.push({ x: floorX, y: floorBaseY - i * 30 });
+            }
+        }
+
+        function startGame() {
+            score = 0;
+            wave = 1;
+            bullets = [];
+            enemies = [];
+            spawnTimer = 0;
+            hero = { x: W / 2 - PLAYER_W / 2, y: H - 120 };
+            resetFloors();
+            state = 'playing';
+            updateHud();
+        }
+
+        function updateHud() {
+            scoreEl.textContent = score;
+            floorsEl.textContent = floors.length;
+            waveEl.textContent = wave;
+        }
+
+        function spawnEnemy() {
+            const side = Math.random() < 0.5 ? -1 : 1;
+            const speed = 0.7 + wave * 0.18 + Math.random() * 0.6;
+            const type = Math.random() < 0.25 + wave * 0.02 ? 'tank' : 'creep';
+            enemies.push({
+                x: W / 2 + side * (200 + Math.random() * 250),
+                y: 40,
+                vx: -side * speed,
+                vy: 0.9 + wave * 0.08,
+                hp: type === 'tank' ? 3 : 1,
+                r: type === 'tank' ? 22 : 14,
+                type: type
+            });
+        }
+
+        function update() {
+            // move hero
+            const keys = keyState;
+            let dx = 0;
+            if (keys['a'] || keys['arrowleft']) dx -= 1;
+            if (keys['d'] || keys['arrowright']) dx += 1;
+            hero.x += dx * PLAYER_SPEED;
+            hero.x = Math.max(10, Math.min(W - PLAYER_W - 10, hero.x));
+
+            // bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.x += b.vx;
+                b.y += b.vy;
+                b.life--;
+                if (b.life <= 0 || b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                // hit enemies
+                let hit = false;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const e = enemies[j];
+                    const d = Math.hypot(b.x - e.x, b.y - e.y);
+                    if (d < e.r + 5) {
+                        e.hp--;
+                        if (e.hp <= 0) {
+                            enemies.splice(j, 1);
+                            score += e.type === 'tank' ? 30 : 10;
+                        }
+                        hit = true;
+                        break;
+                    }
+                }
+                if (hit) bullets.splice(i, 1);
+            }
+
+            // spawn
+            const spawnRate = Math.max(30, 90 - wave * 6);
+            spawnTimer++;
+            if (spawnTimer >= spawnRate) {
+                spawnTimer = 0;
+                spawnEnemy();
+            }
+
+            // enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                e.x += e.vx;
+                e.y += e.vy;
+                e.vx *= 0.995;
+
+                // collision with hero
+                const hd = Math.hypot(
+                    e.x - (hero.x + PLAYER_W / 2),
+                    e.y - (hero.y + PLAYER_H / 2)
+                );
+                if (hd < e.r + PLAYER_W / 2) {
+                    e.vx = e.x < hero.x + PLAYER_W / 2 ? -3 : 3;
+                }
+
+                // damage floors
+                let removed = false;
+                for (let f = floors.length - 1; f >= 0; f--) {
+                    const fl = floors[f];
+                    if (
+                        e.y + e.r > fl.y &&
+                        e.y - e.r < fl.y + FLOOR_H &&
+                        e.x + e.r > fl.x &&
+                        e.x - e.r < fl.x + FLOOR_W
+                    ) {
+                        floors.splice(f, 1);
+                        enemies.splice(i, 1);
+                        removed = true;
+                        break;
+                    }
+                }
+                if (removed) continue;
+
+                // reached ground
+                if (e.y > H - e.r) {
+                    enemies.splice(i, 1);
+                    if (floors.length > 0) floors.shift();
+                }
+            }
+
+            // wave progression
+            const remaining = enemies.length;
+            if (remaining === 0 && spawnTimer > 60 && floors.length > 0) {
+                wave++;
+                spawnTimer = 0;
+                for (let i = 0; i < wave; i++) spawnEnemy();
+            }
+
+            if (floors.length === 0) {
+                state = 'over';
+            }
+
+            updateHud();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+
+            // sky
+            const sky = ctx.createLinearGradient(0, 0, 0, H);
+            sky.addColorStop(0, '#2b4bd8');
+            sky.addColorStop(1, '#eef1ff');
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, W, H);
+
+            // stars
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            for (let i = 0; i < 40; i++) {
+                const sx = (i * 137.5) % W;
+                const sy = (i * 61.7) % (H / 2);
+                ctx.fillRect(sx, sy, 2, 2);
+            }
+
+            // ground
+            ctx.fillStyle = '#1f2a44';
+            ctx.fillRect(0, H - 40, W, 40);
+
+            // stack floors
+            floors.forEach((fl, i) => {
+                ctx.fillStyle = i % 2 === 0 ? '#2b4bd8' : '#3d5af0';
+                ctx.fillRect(fl.x, fl.y, FLOOR_W, FLOOR_H);
+                ctx.fillStyle = '#f0a500';
+                ctx.fillRect(fl.x + 6, fl.y + 3, 12, FLOOR_H - 6);
+            });
+            // stack base
+            ctx.fillStyle = '#1b2f8a';
+            ctx.fillRect(floorX + 10, floorBaseY + 16, FLOOR_W - 20, 24);
+
+            // hero
+            const hx = hero.x;
+            const hy = hero.y;
+            // cape
+            ctx.fillStyle = '#f0a500';
+            ctx.beginPath();
+            ctx.moveTo(hx + PLAYER_W, hy + 6);
+            ctx.lineTo(hx + PLAYER_W + 16, hy + PLAYER_H);
+            ctx.lineTo(hx + PLAYER_W - 6, hy + PLAYER_H);
+            ctx.closePath();
+            ctx.fill();
+            // body
+            ctx.fillStyle = '#2b4bd8';
+            ctx.fillRect(hx + 4, hy + 10, PLAYER_W - 8, PLAYER_H - 14);
+            // head
+            ctx.fillStyle = '#f5d7a8';
+            ctx.beginPath();
+            ctx.arc(hx + PLAYER_W / 2, hy + 8, 11, 0, Math.PI * 2);
+            ctx.fill();
+            // mask
+            ctx.fillStyle = '#1f2a44';
+            ctx.fillRect(hx + PLAYER_W / 2 - 10, hy + 5, 20, 5);
+            // belt
+            ctx.fillStyle = '#f0a500';
+            ctx.fillRect(hx + 4, hy + PLAYER_H - 18, PLAYER_W - 8, 5);
+
+            // aim line
+            ctx.strokeStyle = 'rgba(240,165,0,0.5)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 6]);
+            ctx.beginPath();
+            ctx.moveTo(hx + PLAYER_W / 2, hy + PLAYER_H / 2);
+            ctx.lineTo(mouse.x, mouse.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // bullets
+            ctx.fillStyle = '#f0a500';
+            bullets.forEach(b => {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // enemies
+            enemies.forEach(e => {
+                const c = e.type === 'tank' ? '#a83232' : '#7a1fa8';
+                ctx.fillStyle = c;
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+                ctx.fill();
+                // eyes
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(e.x - e.r / 2, e.y - 4, 4, 0, Math.PI * 2);
+                ctx.arc(e.x + e.r / 2, e.y - 4, 4, 0, Math.PI * 2);
+                ctx.fill();
+                // hp
+                if (e.type === 'tank') {
+                    ctx.fillStyle = '#1f2a44';
+                    ctx.fillRect(e.x - e.r, e.y - e.r - 10, e.r * 2, 5);
+                    ctx.fillStyle = '#4ade80';
+                    ctx.fillRect(e.x - e.r, e.y - e.r - 10, (e.r * 2) * e.hp / 3, 5);
+                }
+            });
+
+            // overlays
+            if (state === 'start') {
+                drawOverlay('STACK HERO', 'Defend the Real Stack!\nMove with A/D or arrow keys.\nAim with the mouse, click to shoot.\nPress Enter to start.');
+            } else if (state === 'paused') {
+                drawOverlay('PAUSED', 'Press P to resume.');
+            } else if (state === 'over') {
+                drawOverlay('THE STACK HAS FALLEN', 'Final Score: ' + score + '   |   Waves: ' + (wave - 1) + '\nPress Enter to try again.');
+            }
+        }
+
+        function drawOverlay(title, body) {
+            ctx.fillStyle = 'rgba(20,32,92,0.82)';
+            ctx.fillRect(0, 0, W, H);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#f0a500';
+            ctx.font = 'bold 44px "Segoe UI", Arial';
+            ctx.fillText(title, W / 2, H / 2 - 40);
+            ctx.fillStyle = '#dfe5ff';
+            ctx.font = '17px "Segoe UI", Arial';
+            const lines = body.split('\n');
+            lines.forEach((line, i) => {
+                ctx.fillText(line, W / 2, H / 2 + 10 + i * 28);
+            });
+        }
+
+        const keyState = {};
+        let shooting = false;
+        let fireTimer = 0;
+        let pausedTimer = 0;
+
+        document.addEventListener('keydown', (e) => {
+            keyState[e.key.toLowerCase()] = true;
+            if (e.key === 'Enter') {
+                if (state === 'start' || state === 'over') startGame();
+            }
+            if (e.key.toLowerCase() === 'p') {
+                if (state === 'playing') { state = 'paused'; }
+                else if (state === 'paused') { state = 'playing'; }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keyState[e.key.toLowerCase()] = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+
+        canvas.addEventListener('mousedown', () => { shooting = true; });
+        window.addEventListener('mouseup', () => { shooting = false; });
+
+        function gameLoop() {
+            if (state === 'playing') {
+                fireTimer++;
+                if (shooting && fireTimer > 14) {
+                    fireTimer = 0;
+                    const hx = hero.x + PLAYER_W / 2;
+                    const hy = hero.y + PLAYER_H / 2;
+                    const ang = Math.atan2(mouse.y - hy, mouse.x - hx);
+                    bullets.push({
+                        x: hx, y: hy,
+                        vx: Math.cos(ang) * 9,
+                        vy: Math.sin(ang) * 9,
+                        life: 90
+                    });
+                }
+                update();
+            }
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>

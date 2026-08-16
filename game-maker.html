@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Road Fury — Game Maker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(160deg, #14205c 0%, #2b4bd8 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 30px;
+            margin-bottom: 4px;
+        }
+
+        h1 span {
+            color: #f0a500;
+        }
+
+        p.subtitle {
+            color: #c3ccf2;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .main {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stage {
+            position: relative;
+        }
+
+        canvas {
+            border-radius: 14px;
+            background: #3b4a6b;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+            display: block;
+            cursor: crosshair;
+        }
+
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 4px;
+            font-size: 15px;
+            color: #dfe5ff;
+        }
+
+        .hud b {
+            color: #f0a500;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 14px;
+            padding: 20px;
+            width: 260px;
+        }
+
+        .panel h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #f0a500;
+        }
+
+        .field {
+            margin-bottom: 14px;
+        }
+
+        .field label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #dfe5ff;
+            margin-bottom: 4px;
+        }
+
+        .field label output {
+            color: #f0a500;
+            font-weight: 700;
+        }
+
+        .field input[type="range"] {
+            width: 100%;
+            accent-color: #f0a500;
+        }
+
+        .field .swatch {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            vertical-align: middle;
+        }
+
+        .field input[type="color"] {
+            width: 46px;
+            height: 30px;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-start {
+            background: #f0a500;
+            color: #1f2a44;
+        }
+
+        .btn-reset {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+        }
+
+        .controls {
+            margin-top: 16px;
+            font-size: 13px;
+            color: #aab4cc;
+            text-align: center;
+        }
+
+        .controls kbd {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 5px;
+            padding: 2px 7px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Road <span>Fury</span></h1>
+    <p class="subtitle">Game maker — tune the settings, then play your own driving-shooter.</p>
+
+    <div class="main">
+        <div class="stage">
+            <div class="hud">
+                <span>Score: <b id="score">0</b></span>
+                <span>Lives: <b id="lives">3</b></span>
+                <span>Level: <b id="level">1</b></span>
+            </div>
+            <canvas id="game" width="520" height="640"></canvas>
+            <div class="controls">
+                <kbd>A</kbd><kbd>D</kbd> steer &nbsp;•&nbsp;
+                <kbd>W</kbd> accelerate &nbsp;•&nbsp;
+                <kbd>Space</kbd> / <kbd>Click</kbd> shoot
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Game Settings</h2>
+            <div class="field">
+                <label>Road speed <output id="outRoad">6</output></label>
+                <input type="range" id="roadSpeed" min="2" max="14" value="6" step="1">
+            </div>
+            <div class="field">
+                <label>Car speed <output id="outCar">5</output></label>
+                <input type="range" id="carSpeed" min="2" max="12" value="5" step="1">
+            </div>
+            <div class="field">
+                <label>Fire rate <output id="outFire">14</output></label>
+                <input type="range" id="fireRate" min="6" max="30" value="14" step="1">
+            </div>
+            <div class="field">
+                <label>Enemy spawn <output id="outSpawn">55</output></label>
+                <input type="range" id="spawnRate" min="20" max="120" value="55" step="1">
+            </div>
+            <div class="field">
+                <label>Bullet color</label>
+                <input type="color" id="bulletColor" value="#f0a500">
+            </div>
+            <div class="field">
+                <label>Car color</label>
+                <input type="color" id="carColor" value="#2b4bd8">
+            </div>
+            <div class="field">
+                <label>Enemy color</label>
+                <input type="color" id="enemyColor" value="#a83232">
+            </div>
+            <div class="actions">
+                <button class="btn-start" onclick="startGame()">Play</button>
+                <button class="btn-reset" onclick="resetGame()">Reset</button>
+            </div>
+            <div class="actions">
+                <button class="btn-start" onclick="exportGame()">Export Game</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+
+        const scoreEl = document.getElementById('score');
+        const livesEl = document.getElementById('lives');
+        const levelEl = document.getElementById('level');
+
+        const inputs = {
+            roadSpeed: document.getElementById('roadSpeed'),
+            carSpeed: document.getElementById('carSpeed'),
+            fireRate: document.getElementById('fireRate'),
+            spawnRate: document.getElementById('spawnRate'),
+            bulletColor: document.getElementById('bulletColor'),
+            carColor: document.getElementById('carColor'),
+            enemyColor: document.getElementById('enemyColor')
+        };
+
+        const outputs = {
+            road: document.getElementById('outRoad'),
+            car: document.getElementById('outCar'),
+            fire: document.getElementById('outFire'),
+            spawn: document.getElementById('outSpawn')
+        };
+
+        function refreshOutputs() {
+            outputs.road.textContent = inputs.roadSpeed.value;
+            outputs.car.textContent = inputs.carSpeed.value;
+            outputs.fire.textContent = inputs.fireRate.value;
+            outputs.spawn.textContent = inputs.spawnRate.value;
+        }
+
+        ['roadSpeed', 'carSpeed', 'fireRate', 'spawnRate'].forEach(id => {
+            document.getElementById(id).addEventListener('input', refreshOutputs);
+        });
+
+        const CAR_W = 42;
+        const CAR_H = 72;
+        let state = 'idle'; // idle | playing | over
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let player = { x: W / 2 - CAR_W / 2, y: H - 110 };
+        let bullets = [];
+        let enemies = [];
+        let spawnTimer = 0;
+        let fireTimer = 0;
+        let roadOffset = 0;
+        let shooting = false;
+        let mouse = { x: W / 2, y: H / 2 };
+
+        function startGame() {
+            score = 0;
+            lives = 3;
+            level = 1;
+            player = { x: W / 2 - CAR_W / 2, y: H - 110 };
+            bullets = [];
+            enemies = [];
+            spawnTimer = 0;
+            fireTimer = 0;
+            state = 'playing';
+            updateHud();
+        }
+
+        function resetGame() {
+            startGame();
+        }
+
+        function updateHud() {
+            scoreEl.textContent = score;
+            livesEl.textContent = lives;
+            levelEl.textContent = level;
+        }
+
+        function drawRoad() {
+            ctx.fillStyle = '#2c3550';
+            ctx.fillRect(0, 0, W, H);
+            // grass edges
+            ctx.fillStyle = '#1e6b3a';
+            ctx.fillRect(0, 0, 52, H);
+            ctx.fillRect(W - 52, 0, 52, H);
+            // lane dividers
+            ctx.strokeStyle = '#e9ecff';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([28, 22]);
+            for (let i = 0; i < 4; i++) {
+                const lx = 104 + i * 104;
+                ctx.beginPath();
+                ctx.moveTo(lx, roadOffset % 50);
+                ctx.lineTo(lx, H);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+        }
+
+        function spawnEnemy() {
+            const lane = Math.floor(Math.random() * 4);
+            const ex = 104 + lane * 104 - 21;
+            enemies.push({
+                x: ex,
+                y: -CAR_H,
+                vx: 0,
+                vy: (1 + level * 0.4 + Math.random() * 1.2),
+                hp: 1
+            });
+        }
+
+        function drawCar(x, y, color, roofColor, isPlayer) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x + 4, y, CAR_W - 8, CAR_H - 6);
+            ctx.fillRect(x, y + 14, CAR_W, CAR_H - 30);
+            ctx.fillStyle = roofColor;
+            ctx.fillRect(x + 8, y + 20, CAR_W - 16, 20);
+            // wheels
+            ctx.fillStyle = '#111827';
+            ctx.fillRect(x - 3, y + 10, 7, 14);
+            ctx.fillRect(x + CAR_W - 4, y + 10, 7, 14);
+            ctx.fillRect(x - 3, y + CAR_H - 24, 7, 14);
+            ctx.fillRect(x + CAR_W - 4, y + CAR_H - 24, 7, 14);
+            // windshield
+            ctx.fillStyle = '#bcd3ff';
+            ctx.fillRect(x + 8, y + 22, CAR_W - 16, 6);
+            // headlights
+            ctx.fillStyle = '#ffe89c';
+            ctx.fillRect(x + 5, y + 4, 8, 4);
+            ctx.fillRect(x + CAR_W - 13, y + 4, 8, 4);
+            if (isPlayer) {
+                // gun on top
+                ctx.fillStyle = '#111827';
+                ctx.fillRect(x + CAR_W / 2 - 3, y - 12, 6, 14);
+            }
+        }
+
+        function update() {
+            const road = Number(inputs.roadSpeed.value);
+            const cspeed = Number(inputs.carSpeed.value);
+            const fRate = Number(inputs.fireRate.value);
+            const sRate = Number(inputs.spawnRate.value);
+            const key = keyState;
+
+            roadOffset += road;
+            if (key['a'] || key['arrowleft']) player.x -= cspeed;
+            if (key['d'] || key['arrowright']) player.x += cspeed;
+            player.x = Math.max(56, Math.min(W - CAR_W - 56, player.x));
+
+            // bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.y += b.vy;
+                if (b.y < -20) { bullets.splice(i, 1); continue; }
+                let hit = false;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const e = enemies[j];
+                    if (b.x > e.x - CAR_W / 2 && b.x < e.x + CAR_W / 2 &&
+                        b.y > e.y && b.y < e.y + CAR_H) {
+                        e.hp--;
+                        if (e.hp <= 0) {
+                            enemies.splice(j, 1);
+                            score += 10;
+                        }
+                        hit = true;
+                        break;
+                    }
+                }
+                if (hit) bullets.splice(i, 1);
+            }
+
+            // fire
+            fireTimer++;
+            if (shooting && fireTimer >= fRate) {
+                fireTimer = 0;
+                bullets.push({ x: player.x + CAR_W / 2, y: player.y - 14, vy: -13 });
+            }
+
+            // spawn
+            spawnTimer++;
+            if (spawnTimer >= sRate) {
+                spawnTimer = 0;
+                spawnEnemy();
+            }
+
+            // enemies move + collide with player
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                e.y += e.vy;
+                if (e.y > H) { enemies.splice(i, 1); continue; }
+                const overlap =
+                    e.x < player.x + CAR_W &&
+                    e.x + CAR_W > player.x &&
+                    e.y < player.y + CAR_H &&
+                    e.y + CAR_H > player.y;
+                if (overlap) {
+                    enemies.splice(i, 1);
+                    lives--;
+                    if (lives <= 0) { state = 'over'; }
+                }
+            }
+
+            // level up every 200 pts
+            if (Math.floor(score / 200) + 1 > level) {
+                level = Math.floor(score / 200) + 1;
+            }
+
+            updateHud();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            drawRoad();
+
+            // enemies
+            enemies.forEach(e => drawCar(e.x, e.y, inputs.enemyColor.value, '#5f1a1a', false));
+
+            // player
+            if (state !== 'over') {
+                drawCar(player.x, player.y, inputs.carColor.value, '#16306b', true);
+            }
+
+            // bullets
+            ctx.fillStyle = inputs.bulletColor.value;
+            bullets.forEach(b => {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            if (state === 'idle') {
+                ctx.fillStyle = 'rgba(20,32,92,0.85)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#f0a500';
+                ctx.font = 'bold 40px "Segoe UI", Arial';
+                ctx.fillText('ROAD FURY', W / 2, H / 2 - 40);
+                ctx.fillStyle = '#dfe5ff';
+                ctx.font = '16px "Segoe UI", Arial';
+                ctx.fillText('Steer with A/D, shoot with Space or click.', W / 2, H / 2 + 8);
+                ctx.fillText('Click Play to start your game.', W / 2, H / 2 + 34);
+            } else if (state === 'over') {
+                ctx.fillStyle = 'rgba(20,32,92,0.85)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#f0a500';
+                ctx.font = 'bold 40px "Segoe UI", Arial';
+                ctx.fillText('WRECKED!', W / 2, H / 2 - 40);
+                ctx.fillStyle = '#dfe5ff';
+                ctx.font = '17px "Segoe UI", Arial';
+                ctx.fillText('Score: ' + score + '  |  Level: ' + level, W / 2, H / 2 + 4);
+                ctx.fillText('Adjust settings, then click Play again.', W / 2, H / 2 + 34);
+            }
+        }
+
+        const keyState = {};
+        document.addEventListener('keydown', e => {
+            keyState[e.key.toLowerCase()] = true;
+            if (e.key === ' ') e.preventDefault();
+        });
+        document.addEventListener('keyup', e => {
+            keyState[e.key.toLowerCase()] = false;
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            const r = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - r.left;
+            mouse.y = e.clientY - r.top;
+        });
+        canvas.addEventListener('mousedown', () => { shooting = true; });
+        window.addEventListener('mouseup', () => { shooting = false; });
+
+        refreshOutputs();
+
+        function loop() {
+            if (state === 'playing') update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+        function exportGame() {
+            const cfg = {
+                roadSpeed: inputs.roadSpeed.value,
+                carSpeed: inputs.carSpeed.value,
+                fireRate: inputs.fireRate.value,
+                spawnRate: inputs.spawnRate.value,
+                bulletColor: inputs.bulletColor.value,
+                carColor: inputs.carColor.value,
+                enemyColor: inputs.enemyColor.value
+            };
+
+            const template = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Road Fury</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(160deg, #14205c 0%, #2b4bd8 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        h1 { font-size: 28px; margin-bottom: 4px; }
+        h1 span { color: #f0a500; }
+        p.sub { color: #c3ccf2; font-size: 14px; margin-bottom: 16px; }
+        .hud {
+            display: flex; justify-content: space-between;
+            width: 520px; padding: 10px 4px; font-size: 15px; color: #dfe5ff;
+        }
+        .hud b { color: #f0a500; }
+        canvas { border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,0.45); cursor: crosshair; }
+        .controls { margin-top: 14px; font-size: 13px; color: #aab4cc; }
+        .controls kbd {
+            background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 5px; padding: 2px 7px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Road <span>Fury</span></h1>
+    <p class="sub">Your customized driving-shooter game.</p>
+    <div class="hud">
+        <span>Score: <b id="score">0</b></span>
+        <span>Lives: <b id="lives">3</b></span>
+        <span>Level: <b id="level">1</b></span>
+    </div>
+    <canvas id="game" width="520" height="640"></canvas>
+    <div class="controls">
+        <kbd>A</kbd><kbd>D</kbd> steer &nbsp;•&nbsp;
+        <kbd>Space</kbd> / <kbd>Click</kbd> shoot
+    </div>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+
+        const SETTINGS = {
+            roadSpeed: ${cfg.roadSpeed},
+            carSpeed: ${cfg.carSpeed},
+            fireRate: ${cfg.fireRate},
+            spawnRate: ${cfg.spawnRate},
+            bulletColor: '${cfg.bulletColor}',
+            carColor: '${cfg.carColor}',
+            enemyColor: '${cfg.enemyColor}'
+        };
+
+        const scoreEl = document.getElementById('score');
+        const livesEl = document.getElementById('lives');
+        const levelEl = document.getElementById('level');
+
+        const CAR_W = 42, CAR_H = 72;
+        let state = 'idle';
+        let score = 0, lives = 3, level = 1;
+        let player = { x: W/2 - CAR_W/2, y: H - 110 };
+        let bullets = [], enemies = [], spawnTimer = 0, fireTimer = 0, roadOffset = 0;
+        let shooting = false;
+
+        function updateHud() {
+            scoreEl.textContent = score;
+            livesEl.textContent = lives;
+            levelEl.textContent = level;
+        }
+
+        function startGame() {
+            score = 0; lives = 3; level = 1;
+            player = { x: W/2 - CAR_W/2, y: H - 110 };
+            bullets = []; enemies = []; spawnTimer = 0; fireTimer = 0;
+            state = 'playing';
+            updateHud();
+        }
+
+        function drawRoad() {
+            ctx.fillStyle = '#2c3550';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = '#1e6b3a';
+            ctx.fillRect(0, 0, 52, H);
+            ctx.fillRect(W - 52, 0, 52, H);
+            ctx.strokeStyle = '#e9ecff';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([28, 22]);
+            for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(104 + i*104, roadOffset % 50);
+                ctx.lineTo(104 + i*104, H);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+        }
+
+        function drawCar(x, y, color, roofColor, isPlayer) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x + 4, y, CAR_W - 8, CAR_H - 6);
+            ctx.fillRect(x, y + 14, CAR_W, CAR_H - 30);
+            ctx.fillStyle = roofColor;
+            ctx.fillRect(x + 8, y + 20, CAR_W - 16, 20);
+            ctx.fillStyle = '#111827';
+            ctx.fillRect(x - 3, y + 10, 7, 14);
+            ctx.fillRect(x + CAR_W - 4, y + 10, 7, 14);
+            ctx.fillRect(x - 3, y + CAR_H - 24, 7, 14);
+            ctx.fillRect(x + CAR_W - 4, y + CAR_H - 24, 7, 14);
+            ctx.fillStyle = '#bcd3ff';
+            ctx.fillRect(x + 8, y + 22, CAR_W - 16, 6);
+            ctx.fillStyle = '#ffe89c';
+            ctx.fillRect(x + 5, y + 4, 8, 4);
+            ctx.fillRect(x + CAR_W - 13, y + 4, 8, 4);
+            if (isPlayer) {
+                ctx.fillStyle = '#111827';
+                ctx.fillRect(x + CAR_W/2 - 3, y - 12, 6, 14);
+            }
+        }
+
+        function update() {
+            roadOffset += SETTINGS.roadSpeed;
+            const key = keyState;
+            if (key['a'] || key['arrowleft']) player.x -= SETTINGS.carSpeed;
+            if (key['d'] || key['arrowright']) player.x += SETTINGS.carSpeed;
+            player.x = Math.max(56, Math.min(W - CAR_W - 56, player.x));
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.y += b.vy;
+                if (b.y < -20) { bullets.splice(i, 1); continue; }
+                let hit = false;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const e = enemies[j];
+                    if (b.x > e.x - CAR_W/2 && b.x < e.x + CAR_W/2 && b.y > e.y && b.y < e.y + CAR_H) {
+                        e.hp--;
+                        if (e.hp <= 0) { enemies.splice(j, 1); score += 10; }
+                        hit = true;
+                        break;
+                    }
+                }
+                if (hit) bullets.splice(i, 1);
+            }
+
+            fireTimer++;
+            if (shooting && fireTimer >= SETTINGS.fireRate) {
+                fireTimer = 0;
+                bullets.push({ x: player.x + CAR_W/2, y: player.y - 14, vy: -13 });
+            }
+
+            spawnTimer++;
+            if (spawnTimer >= SETTINGS.spawnRate) {
+                spawnTimer = 0;
+                enemies.push({ x: 104 + Math.floor(Math.random()*4)*104 - 21, y: -CAR_H, vy: 1 + level*0.4 + Math.random()*1.2, hp: 1 });
+            }
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                e.y += e.vy;
+                if (e.y > H) { enemies.splice(i, 1); continue; }
+                if (e.x < player.x + CAR_W && e.x + CAR_W > player.x && e.y < player.y + CAR_H && e.y + CAR_H > player.y) {
+                    enemies.splice(i, 1);
+                    lives--;
+                    if (lives <= 0) state = 'over';
+                }
+            }
+
+            const nl = Math.floor(score / 200) + 1;
+            if (nl > level) level = nl;
+            updateHud();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            drawRoad();
+            enemies.forEach(e => drawCar(e.x, e.y, SETTINGS.enemyColor, '#5f1a1a', false));
+            if (state !== 'over') drawCar(player.x, player.y, SETTINGS.carColor, '#16306b', true);
+            ctx.fillStyle = SETTINGS.bulletColor;
+            bullets.forEach(b => {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 4, 0, Math.PI*2);
+                ctx.fill();
+            });
+            if (state === 'idle') {
+                ctx.fillStyle = 'rgba(20,32,92,0.85)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#f0a500';
+                ctx.font = 'bold 40px "Segoe UI", Arial';
+                ctx.fillText('ROAD FURY', W/2, H/2 - 40);
+                ctx.fillStyle = '#dfe5ff';
+                ctx.font = '16px "Segoe UI", Arial';
+                ctx.fillText('Steer with A/D, shoot with Space or click.', W/2, H/2 + 8);
+                ctx.fillText('Press Enter to start.', W/2, H/2 + 34);
+            } else if (state === 'over') {
+                ctx.fillStyle = 'rgba(20,32,92,0.85)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#f0a500';
+                ctx.font = 'bold 40px "Segoe UI", Arial';
+                ctx.fillText('WRECKED!', W/2, H/2 - 40);
+                ctx.fillStyle = '#dfe5ff';
+                ctx.font = '17px "Segoe UI", Arial';
+                ctx.fillText('Score: ' + score + '  |  Level: ' + level, W/2, H/2 + 4);
+                ctx.fillText('Press Enter to play again.', W/2, H/2 + 34);
+            }
+        }
+
+        const keyState = {};
+        document.addEventListener('keydown', e => {
+            keyState[e.key.toLowerCase()] = true;
+            if (e.key === ' ') e.preventDefault();
+            if (e.key === 'Enter' && state !== 'playing') startGame();
+        });
+        document.addEventListener('keyup', e => {
+            keyState[e.key.toLowerCase()] = false;
+        });
+        canvas.addEventListener('mousedown', () => { shooting = true; });
+        window.addEventListener('mouseup', () => { shooting = false; });
+
+        function loop() {
+            if (state === 'playing') update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+        loop();
+    <\/script>
+</body>
+</html>`;
+
+            const blob = new Blob([template], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'road-fury.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
