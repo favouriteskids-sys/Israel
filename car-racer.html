@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M.r Racer — You vs Computer</title>
+    <title>M.r Racer</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -17,36 +17,28 @@
             justify-content: center;
             padding: 20px;
             overflow: hidden;
+            user-select: none;
         }
-        h1 { font-size: 32px; margin-bottom: 4px; text-shadow: 0 2px 8px rgba(20,32,92,0.35); }
+        h1 { font-size: 28px; margin-bottom: 4px; text-shadow: 0 2px 8px rgba(20,32,92,0.35); }
         h1 span { color: #f0a500; }
-        p.sub { color: rgba(255,255,255,0.85); font-size: 14px; margin-bottom: 14px; }
         .hud {
             display: flex; justify-content: space-between; align-items: center;
-            width: 560px; padding: 10px 8px; font-size: 14px; color: #1f2a44;
+            width: 500px; padding: 10px 8px; font-size: 14px; color: #1f2a44;
             background: rgba(255,255,255,0.75); border-radius: 10px 10px 0 0; font-weight: 600;
         }
         .hud b { color: #e8850c; }
-        .hud .p1 { color: #0e9f6e; }
-        .hud .p2 { color: #ff6b6b; }
+        .hud .p1 { color: #0e9f6e; font-weight: 700; }
+        .hud .p2 { color: #a83232; font-weight: 700; }
         canvas {
             border-radius: 0 0 14px 14px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+            cursor: default;
         }
-        .controls {
-            margin-top: 14px; font-size: 13px; color: rgba(255,255,255,0.9);
-            text-align: center; line-height: 1.8;
-        }
-        .controls kbd {
-            background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.4);
-            border-radius: 5px; padding: 2px 7px;
-        }
+        .tip { margin-top: 14px; font-size: 13px; color: rgba(255,255,255,0.9); }
     </style>
 </head>
 <body>
     <h1>M.r <span>Racer</span></h1>
-    <p class="sub">EstateFlow arcade — you vs computer. Grab more coins to win!</p>
-
     <div class="hud">
         <span><span class="p1">YOU</span> 🪙 <b id="c1">0</b></span>
         <span><span class="p1">YOU</span> <b id="d1">0</b>m</span>
@@ -54,349 +46,263 @@
         <span><span class="p2">CPU</span> <b id="d2">0</b>m</span>
         <span><span class="p2">CPU</span> 🪙 <b id="c2">0</b></span>
     </div>
-    <canvas id="game" width="560" height="640"></canvas>
-    <div class="controls">
-        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to steer &nbsp;|&nbsp;
-        Both drive forward — steer to grab 🪙 coins!
-    </div>
+    <canvas id="g" width="500" height="600"></canvas>
+    <div class="tip">Tap <b>A</b> / <b>D</b> or <b>Click left/right</b> to steer — that's it!</div>
 
     <script>
-        const canvas = document.getElementById('game');
-        const ctx = canvas.getContext('2d');
-        const W = canvas.width;
-        const H = canvas.height;
+        var c = document.getElementById('g');
+        var x = c.getContext('2d');
+        var W = 500, H = 600;
+        var RL = 50, RR = W - 50, RW = RR - RL;
 
-        const CAR_W = 52, CAR_H = 65;
-        const ROAD_L = 64, ROAD_R = W - 64, ROAD_W = ROAD_R - ROAD_L;
+        var S = 'menu';
+        var t = 0;
+        var off = 0;
 
-        let gameState = 'menu';
-        let roadOffset = 0;
-        let coinSpin = 0;
-        let pickups = [];
-        let pickupTimer = 0;
+        var p1 = { px: 0, coins: 0, dist: 0 };
+        var p2 = { px: 0, coins: 0, dist: 0 };
+        var coins = [];
+        var k = {};
+        var spin = 0;
 
-        let p1 = { x: 0, y: H - 110, coins: 0, dist: 0 };
-        let p2 = { x: 0, y: H - 110, coins: 0, dist: 0 };
-
-        const keys = {};
-
-        function startGame() {
-            p1 = { x: ROAD_L + ROAD_W / 4, y: H - 110, coins: 0, dist: 0 };
-            p2 = { x: ROAD_L + ROAD_W * 3 / 4, y: H - 110, coins: 0, dist: 0 };
-            pickups = [];
-            pickupTimer = 0;
-            coinSpin = 0;
-            roadOffset = 0;
-            gameState = 'play';
+        function go() {
+            p1 = { px: RL + RW / 4 - 22, coins: 0, dist: 0 };
+            p2 = { px: RL + RW * 3 / 4 - 22, coins: 0, dist: 0 };
+            coins = [];
+            off = 0;
+            spin = 0;
+            t = 0;
+            S = 'play';
         }
 
-        function updateHud() {
+        function hud() {
             document.getElementById('c1').textContent = p1.coins;
             document.getElementById('d1').textContent = Math.floor(p1.dist);
             document.getElementById('c2').textContent = p2.coins;
             document.getElementById('d2').textContent = Math.floor(p2.dist);
         }
 
-        function pickLane() {
-            const cols = 4;
-            const colW = ROAD_W / cols;
-            const col = Math.floor(Math.random() * cols);
-            const minX = ROAD_L + col * colW + 12;
-            const maxX = ROAD_L + (col + 1) * colW - CAR_W - 12;
-            if (maxX < minX) return null;
-            return minX + Math.random() * (maxX - minX);
+        function addCoin() {
+            var cols = 4;
+            var cw = RW / cols;
+            var col = Math.floor(Math.random() * cols);
+            var cx = RL + col * cw + cw / 2;
+            coins.push({ px: cx, py: -20 });
         }
 
-        function spawnPickup() {
-            const x = pickLane();
-            if (x === null) return;
-            const r = Math.random();
-            const type = r < 0.75 ? 'coin' : r < 0.9 ? 'shield' : 'nitro';
-            pickups.push({ x: x + CAR_W / 2, y: -40, type: type });
-        }
+        function drawBG() {
+            var s = x.createLinearGradient(0, 0, 0, H);
+            s.addColorStop(0, '#8ed1f7');
+            s.addColorStop(0.3, '#bfe6ff');
+            s.addColorStop(0.5, '#e8f7ff');
+            x.fillStyle = s;
+            x.fillRect(0, 0, W, H);
 
-        function drawRoad() {
-            const sky = ctx.createLinearGradient(0, 0, 0, H);
-            sky.addColorStop(0, '#8ed1f7');
-            sky.addColorStop(0.25, '#bfe6ff');
-            sky.addColorStop(0.4, '#e8f7ff');
-            ctx.fillStyle = sky;
-            ctx.fillRect(0, 0, W, H);
+            x.fillStyle = 'rgba(255,220,100,0.35)';
+            x.beginPath(); x.arc(W - 60, 55, 40, 0, Math.PI * 2); x.fill();
+            x.fillStyle = '#ffe98a';
+            x.beginPath(); x.arc(W - 60, 55, 28, 0, Math.PI * 2); x.fill();
 
-            ctx.fillStyle = 'rgba(255,220,100,0.4)';
-            ctx.beginPath(); ctx.arc(W - 70, 70, 55, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#ffe98a';
-            ctx.beginPath(); ctx.arc(W - 70, 70, 36, 0, Math.PI * 2); ctx.fill();
+            x.fillStyle = '#b8bfc9';
+            x.fillRect(0, 0, RL - 6, H);
+            x.fillRect(RR + 6, 0, W - RR - 6, H);
 
-            ctx.fillStyle = 'rgba(255,255,255,0.9)';
-            [-150, 0, 150].forEach((base, i) => {
-                const cx = ((base + roadOffset * 0.05) % (W + 300)) - 150 + 70 * i;
-                const cy = 90 + i * 30;
-                ctx.beginPath();
-                ctx.arc(cx, cy, 22, 0, Math.PI * 2);
-                ctx.arc(cx + 24, cy - 8, 26, 0, Math.PI * 2);
-                ctx.arc(cx + 50, cy, 20, 0, Math.PI * 2);
-                ctx.fill();
-            });
+            x.fillStyle = '#5a616e';
+            x.fillRect(RL, 0, RW, H);
 
-            ctx.fillStyle = '#b8bfc9';
-            ctx.fillRect(0, 0, ROAD_L - 12, H);
-            ctx.fillRect(ROAD_R + 12, 0, W - (ROAD_R + 12), H);
+            x.fillStyle = '#fff';
+            x.fillRect(RL, 0, 5, H);
+            x.fillRect(RR - 5, 0, 5, H);
 
-            ctx.fillStyle = '#5a616e';
-            ctx.fillRect(ROAD_L, 0, ROAD_W, H);
-
-            ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-            ctx.lineWidth = 2;
-            for (let i = 0; i < 30; i++) {
-                const y = ((i * 47 + roadOffset * 0.7) % (H + 40)) - 20;
-                ctx.beginPath(); ctx.moveTo(ROAD_L, y); ctx.lineTo(ROAD_R, y + 26); ctx.stroke();
+            x.strokeStyle = '#f2f4ff';
+            x.lineWidth = 4;
+            x.setLineDash([28, 22]);
+            for (var i = 1; i < 4; i++) {
+                var lx = RL + (RW / 4) * i;
+                x.beginPath();
+                x.moveTo(lx, off % 50);
+                x.lineTo(lx, H);
+                x.stroke();
             }
+            x.setLineDash([]);
 
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(ROAD_L, 0, 6, H);
-            ctx.fillRect(ROAD_R - 6, 0, 6, H);
-
-            ctx.strokeStyle = '#f2f4ff';
-            ctx.lineWidth = 5;
-            ctx.setLineDash([32, 26]);
-            for (let i = 1; i < 4; i++) {
-                const lx = ROAD_L + (ROAD_W / 4) * i;
-                ctx.beginPath();
-                ctx.moveTo(lx, roadOffset % 58);
-                ctx.lineTo(lx, H);
-                ctx.stroke();
-            }
-            ctx.setLineDash([]);
-
-            const count = Math.ceil(H / 85) + 2;
-            for (let side = -1; side <= 1; side += 2) {
-                const left = side < 0;
-                for (let i = 0; i < count; i++) {
-                    const baseY = ((i * 85 + roadOffset * 0.8) % (H + 170)) - 85;
-                    const h = 90 + ((i * 137) % 140);
-                    const w = 44 + ((i * 53) % 20);
-                    const x = left ? ROAD_L - w - 6 : ROAD_R + 6;
-                    const colors = ['#d4b896','#c9a87c','#b8946a','#e0c9a6','#cbb08e'];
-                    ctx.fillStyle = colors[i % colors.length];
-                    ctx.fillRect(x, baseY + 85 - h, w, h);
-                    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-                    for (let wy = baseY + 85 - h + 10; wy < baseY + 70; wy += 18)
-                        for (let wx = x + 6; wx < x + w - 8; wx += 11)
-                            ctx.fillRect(wx, wy, 6, 9);
-                    ctx.fillStyle = 'rgba(80,55,25,0.4)';
-                    ctx.fillRect(x + 2, baseY + 45, w - 4, 40);
-                    if (i % 4 === 0) { ctx.fillStyle = '#e11d48'; ctx.fillRect(x - 2, baseY + 48, w + 4, 6); }
+            var n = Math.ceil(H / 80) + 2;
+            for (var side = -1; side <= 1; side += 2) {
+                var left = side < 0;
+                for (var i = 0; i < n; i++) {
+                    var by = ((i * 80 + off * 0.7) % (H + 160)) - 80;
+                    var bh = 80 + ((i * 137) % 120);
+                    var bw = 40 + ((i * 53) % 18);
+                    var bx = left ? RL - bw - 4 : RR + 4;
+                    var cols = ['#d4b896','#c9a87c','#b8946a','#e0c9a6','#cbb08e'];
+                    x.fillStyle = cols[i % cols.length];
+                    x.fillRect(bx, by + 80 - bh, bw, bh);
+                    x.fillStyle = 'rgba(255,255,255,0.4)';
+                    for (var wy = by + 80 - bh + 8; wy < by + 65; wy += 16)
+                        for (var wx = bx + 5; wx < bx + bw - 7; wx += 10)
+                            x.fillRect(wx, wy, 5, 8);
                 }
             }
         }
 
-        function drawCar(x, y, color, roof, label) {
-            // low, wide Lamborghini body
-            ctx.fillStyle = color;
-            // main body - wide and low
-            ctx.beginPath();
-            ctx.moveTo(x + 6, y);
-            ctx.lineTo(x + CAR_W - 6, y);
-            ctx.lineTo(x + CAR_W, y + 16);
-            ctx.lineTo(x + CAR_W, y + CAR_H - 20);
-            ctx.lineTo(x + CAR_W - 4, y + CAR_H);
-            ctx.lineTo(x + 4, y + CAR_H);
-            ctx.lineTo(x, y + CAR_H - 20);
-            ctx.lineTo(x, y + 16);
-            ctx.closePath();
-            ctx.fill();
-            // windshield - sharp angle
-            ctx.fillStyle = roof;
-            ctx.beginPath();
-            ctx.moveTo(x + 10, y + 14);
-            ctx.lineTo(x + CAR_W - 10, y + 14);
-            ctx.lineTo(x + CAR_W - 6, y + 30);
-            ctx.lineTo(x + 6, y + 30);
-            ctx.closePath();
-            ctx.fill();
-            // gold racing stripe
-            ctx.fillStyle = '#f0a500';
-            ctx.fillRect(x + CAR_W / 2 - 3, y + 2, 6, CAR_H - 6);
-            // angular headlights
-            ctx.fillStyle = '#ffe89c';
-            ctx.beginPath();
-            ctx.moveTo(x + 2, y + 4);
-            ctx.lineTo(x + 14, y);
-            ctx.lineTo(x + 14, y + 8);
-            ctx.lineTo(x + 2, y + 8);
-            ctx.closePath();
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(x + CAR_W - 2, y + 4);
-            ctx.lineTo(x + CAR_W - 14, y);
-            ctx.lineTo(x + CAR_W - 14, y + 8);
-            ctx.lineTo(x + CAR_W - 2, y + 8);
-            ctx.closePath();
-            ctx.fill();
-            // rear lights - aggressive
-            ctx.fillStyle = '#ff4444';
-            ctx.fillRect(x + 2, y + CAR_H - 6, 14, 4);
-            ctx.fillRect(x + CAR_W - 16, y + CAR_H - 6, 14, 4);
-            // wheels - wider
-            ctx.fillStyle = '#111827';
-            ctx.fillRect(x - 2, y + 10, 6, 14);
-            ctx.fillRect(x + CAR_W - 4, y + 10, 6, 14);
-            ctx.fillRect(x - 2, y + CAR_H - 24, 6, 14);
-            ctx.fillRect(x + CAR_W - 4, y + CAR_H - 24, 6, 14);
-            // side air intakes
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.fillRect(x + 1, y + 32, 8, 12);
-            ctx.fillRect(x + CAR_W - 9, y + 32, 8, 12);
-            // windshield glass
-            ctx.fillStyle = '#cde9ff';
-            ctx.beginPath();
-            ctx.moveTo(x + 12, y + 16);
-            ctx.lineTo(x + CAR_W - 12, y + 16);
-            ctx.lineTo(x + CAR_W - 8, y + 28);
-            ctx.lineTo(x + 8, y + 28);
-            ctx.closePath();
-            ctx.fill();
-            // label
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 10px "Segoe UI"';
-            ctx.textAlign = 'center';
-            ctx.fillText(label, x + CAR_W / 2, y - 4);
+        function drawLambo(px, py, col, roof, lbl) {
+            var cw = 48, ch = 60;
+            x.fillStyle = col;
+            x.beginPath();
+            x.moveTo(px + 5, py);
+            x.lineTo(px + cw - 5, py);
+            x.lineTo(px + cw, py + 14);
+            x.lineTo(px + cw, py + ch - 16);
+            x.lineTo(px + cw - 3, py + ch);
+            x.lineTo(px + 3, py + ch);
+            x.lineTo(px, py + ch - 16);
+            x.lineTo(px, py + 14);
+            x.closePath();
+            x.fill();
+
+            x.fillStyle = roof;
+            x.beginPath();
+            x.moveTo(px + 9, py + 12);
+            x.lineTo(px + cw - 9, py + 12);
+            x.lineTo(px + cw - 5, py + 28);
+            x.lineTo(px + 5, py + 28);
+            x.closePath();
+            x.fill();
+
+            x.fillStyle = '#f0a500';
+            x.fillRect(px + cw / 2 - 3, py + 2, 6, ch - 5);
+
+            x.fillStyle = '#ffe89c';
+            x.beginPath();
+            x.moveTo(px + 1, py + 4); x.lineTo(px + 12, py); x.lineTo(px + 12, py + 7); x.lineTo(px + 1, py + 7);
+            x.closePath(); x.fill();
+            x.beginPath();
+            x.moveTo(px + cw - 1, py + 4); x.lineTo(px + cw - 12, py); x.lineTo(px + cw - 12, py + 7); x.lineTo(px + cw - 1, py + 7);
+            x.closePath(); x.fill();
+
+            x.fillStyle = '#ff4444';
+            x.fillRect(px + 2, py + ch - 5, 12, 3);
+            x.fillRect(px + cw - 14, py + ch - 5, 12, 3);
+
+            x.fillStyle = '#111827';
+            x.fillRect(px - 2, py + 9, 5, 12);
+            x.fillRect(px + cw - 3, py + 9, 5, 12);
+            x.fillRect(px - 2, py + ch - 20, 5, 12);
+            x.fillRect(px + cw - 3, py + ch - 20, 5, 12);
+
+            x.fillStyle = '#cde9ff';
+            x.beginPath();
+            x.moveTo(px + 10, py + 14); x.lineTo(px + cw - 10, py + 14);
+            x.lineTo(px + cw - 6, py + 26); x.lineTo(px + 6, py + 26);
+            x.closePath(); x.fill();
+
+            x.fillStyle = '#fff';
+            x.font = 'bold 10px "Segoe UI"';
+            x.textAlign = 'center';
+            x.fillText(lbl, px + cw / 2, py - 4);
         }
 
         function update() {
-            const steerSpeed = 5;
+            var spd = 4;
 
-            if (keys['a'] || keys['arrowleft']) p1.x -= steerSpeed;
-            if (keys['d'] || keys['arrowright']) p1.x += steerSpeed;
-            if (keys['w'] || keys['arrowup']) p1.y -= steerSpeed * 0.6;
-            if (keys['s'] || keys['arrowdown']) p1.y += steerSpeed * 0.6;
-            p1.x = Math.max(ROAD_L + 8, Math.min(ROAD_R - CAR_W - 8, p1.x));
-            p1.y = Math.max(H - 180, Math.min(H - 80, p1.y));
+            if (k['a'] || k['arrowleft']) p1.px -= spd;
+            if (k['d'] || k['arrowright']) p1.px += spd;
+            p1.px = Math.max(RL + 4, Math.min(RR - 52, p1.px));
 
-            let aiTargetX = ROAD_L + ROAD_W * 3 / 4;
-            let bestDist = 999;
-            pickups.forEach(p => {
-                if (p.type !== 'coin') return;
-                const py = p.y;
-                const px = p.x - CAR_W / 2;
-                if (py < p2.y + 50 && py > p2.y - 200) {
-                    const d = Math.abs(px - p2.x);
-                    if (d < bestDist) { bestDist = d; aiTargetX = px; }
-                }
-            });
-            const aiDx = aiTargetX - p2.x;
-            p2.x += Math.max(-steerSpeed, Math.min(steerSpeed, aiDx * 0.06));
-            p2.x = Math.max(ROAD_L + 8, Math.min(ROAD_R - CAR_W - 8, p2.x));
-
-            roadOffset += 7;
-            p1.dist += 0.35;
-            p2.dist += 0.35;
-            coinSpin += 0.08;
-
-            pickupTimer++;
-            if (pickupTimer >= 50) {
-                pickupTimer = 0;
-                spawnPickup();
-            }
-
-            for (let i = pickups.length - 1; i >= 0; i--) {
-                const p = pickups[i];
-                p.y += 3;
-                if (p.y > H + 20) { pickups.splice(i, 1); continue; }
-
-                if (p.x > p1.x && p.x < p1.x + CAR_W && p.y > p1.y && p.y < p1.y + CAR_H) {
-                    if (p.type === 'coin') p1.coins++;
-                    pickups.splice(i, 1); continue;
-                }
-                if (p.x > p2.x && p.x < p2.x + CAR_W && p.y > p2.y && p.y < p2.y + CAR_H) {
-                    if (p.type === 'coin') p2.coins++;
-                    pickups.splice(i, 1);
+            var tx = RL + RW * 3 / 4 - 22;
+            var bd = 999;
+            for (var i = 0; i < coins.length; i++) {
+                var cn = coins[i];
+                if (cn.py < p2.py + 40 && cn.py > p2.py - 150) {
+                    var d = Math.abs(cn.px - p2.px - 24);
+                    if (d < bd) { bd = d; tx = cn.px - 24; }
                 }
             }
+            p2.px += (tx - p2.px) * 0.05;
+            p2.px = Math.max(RL + 4, Math.min(RR - 52, p2.px));
 
-            updateHud();
+            off += 5;
+            p1.dist += 0.25;
+            p2.dist += 0.25;
+            spin += 0.08;
+
+            t++;
+            if (t % 55 === 0) addCoin();
+
+            for (var i = coins.length - 1; i >= 0; i--) {
+                var cn = coins[i];
+                cn.py += 2.5;
+                if (cn.py > H + 20) { coins.splice(i, 1); continue; }
+
+                if (cn.px > p1.px - 6 && cn.px < p1.px + 54 && cn.py > p1.py && cn.py < p1.py + 60) {
+                    p1.coins++;
+                    coins.splice(i, 1); continue;
+                }
+                if (cn.px > p2.px - 6 && cn.px < p2.px + 54 && cn.py > p2.py && cn.py < p2.py + 60) {
+                    p2.coins++;
+                    coins.splice(i, 1);
+                }
+            }
+            hud();
         }
 
         function draw() {
-            ctx.clearRect(0, 0, W, H);
-            drawRoad();
+            x.clearRect(0, 0, W, H);
+            drawBG();
 
-            pickups.forEach(p => {
-                const cx = p.x, cy = p.y;
-                if (p.type === 'coin') {
-                    const s = Math.abs(Math.cos(coinSpin));
-                    ctx.fillStyle = '#ffc93c';
-                    ctx.beginPath(); ctx.ellipse(cx, cy, 10 * s + 2, 12, 0, 0, Math.PI * 2); ctx.fill();
-                    ctx.fillStyle = '#e8850c';
-                    ctx.beginPath(); ctx.ellipse(cx, cy, 5 * s + 1, 7, 0, 0, Math.PI * 2); ctx.fill();
-                } else if (p.type === 'shield') {
-                    ctx.strokeStyle = '#0e9f6e'; ctx.lineWidth = 5;
-                    ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.stroke();
-                } else if (p.type === 'nitro') {
-                    ctx.fillStyle = '#ff8f1f';
-                    ctx.beginPath();
-                    ctx.moveTo(cx, cy - 14); ctx.lineTo(cx + 12, cy);
-                    ctx.lineTo(cx, cy + 14); ctx.lineTo(cx - 12, cy);
-                    ctx.closePath(); ctx.fill();
-                }
-            });
+            for (var i = 0; i < coins.length; i++) {
+                var cn = coins[i];
+                var s = Math.abs(Math.cos(spin));
+                x.fillStyle = '#ffc93c';
+                x.beginPath(); x.ellipse(cn.px, cn.py, 10 * s + 3, 13, 0, 0, Math.PI * 2); x.fill();
+                x.fillStyle = '#e8850c';
+                x.beginPath(); x.ellipse(cn.px, cn.py, 5 * s + 2, 7, 0, 0, Math.PI * 2); x.fill();
+            }
 
-            drawCar(p1.x, p1.y, '#0e9f6e', '#0a6b4c', 'YOU');
-            drawCar(p2.x, p2.y, '#a83232', '#6b1a1a', 'CPU');
+            drawLambo(p1.px, p1.y, '#0e9f6e', '#0a6b4c', 'YOU');
+            drawLambo(p2.px, p2.y, '#a83232', '#6b1a1a', 'CPU');
 
-            if (gameState === 'menu') {
-                ctx.fillStyle = 'rgba(20,32,92,0.85)';
-                ctx.fillRect(0, 0, W, H);
-                ctx.textAlign = 'center';
-                ctx.fillStyle = '#f0a500';
-                ctx.font = 'bold 44px "Segoe UI"';
-                ctx.fillText('M.R RACER', W / 2, H / 2 - 70);
-                ctx.fillStyle = '#fff';
-                ctx.font = '20px "Segoe UI"';
-                ctx.fillText('YOU  vs  COMPUTER', W / 2, H / 2 - 30);
-                ctx.font = '16px "Segoe UI"';
-                ctx.fillStyle = '#0e9f6e';
-                ctx.fillText('You: W/A/S/D to steer', W / 2, H / 2 + 10);
-                ctx.fillStyle = '#ff8f8f';
-                ctx.fillText('Computer: chases coins automatically', W / 2, H / 2 + 38);
-                ctx.fillStyle = '#dfe5ff';
-                ctx.fillText('Collect more coins to win!', W / 2, H / 2 + 66);
-                ctx.fillStyle = '#ffe98a';
-                ctx.font = 'bold 20px "Segoe UI"';
-                ctx.fillText('Click or press Enter to start', W / 2, H / 2 + 110);
+            if (S === 'menu') {
+                x.fillStyle = 'rgba(20,32,92,0.88)';
+                x.fillRect(0, 0, W, H);
+                x.textAlign = 'center';
+                x.fillStyle = '#f0a500';
+                x.font = 'bold 44px "Segoe UI"';
+                x.fillText('M.R RACER', W / 2, H / 2 - 60);
+                x.fillStyle = '#fff';
+                x.font = '20px "Segoe UI"';
+                x.fillText('YOU  vs  CPU', W / 2, H / 2 - 22);
+                x.font = '16px "Segoe UI"';
+                x.fillStyle = '#dfe5ff';
+                x.fillText('A / D to steer left and right', W / 2, H / 2 + 14);
+                x.fillText('Grab the coins before the CPU!', W / 2, H / 2 + 40);
+                x.fillStyle = '#ffe98a';
+                x.font = 'bold 22px "Segoe UI"';
+                x.fillText('TAP OR CLICK TO START', W / 2, H / 2 + 90);
             }
         }
 
-        document.addEventListener('keydown', function(e) {
-            keys[e.key.toLowerCase()] = true;
-            if (gameState === 'menu') {
-                e.preventDefault();
-                startGame();
-            }
-            if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) e.preventDefault();
-        });
-
-        document.addEventListener('keyup', function(e) {
-            keys[e.key.toLowerCase()] = false;
-        });
-
-        canvas.addEventListener('click', function() {
-            if (gameState === 'menu') startGame();
-        });
-
-        document.body.addEventListener('click', function() {
-            if (gameState === 'menu') startGame();
-        });
-
-        document.body.setAttribute('tabindex', '0');
-        document.body.focus();
-
         function loop() {
-            if (gameState === 'play') update();
+            if (S === 'play') update();
             draw();
             requestAnimationFrame(loop);
         }
+
+        p1.y = H - 100;
+        p2.y = H - 100;
+        p1.px = RL + RW / 4 - 22;
+        p2.px = RL + RW * 3 / 4 - 22;
+
+        document.addEventListener('keydown', function(e) {
+            k[e.key.toLowerCase()] = true;
+            if (S === 'menu') go();
+            e.preventDefault();
+        });
+        document.addEventListener('keyup', function(e) { k[e.key.toLowerCase()] = false; });
+        c.addEventListener('click', function() { if (S === 'menu') go(); });
+        c.addEventListener('touchstart', function() { if (S === 'menu') go(); }, { passive: true });
+        document.body.addEventListener('click', function() { if (S === 'menu') go(); });
+        document.body.addEventListener('touchstart', function() { if (S === 'menu') go(); }, { passive: true });
 
         loop();
     </script>
