@@ -3,13 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M.r Racer — EstateFlow Arcade</title>
+    <title>M.r Racer — 2 Player</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: "Segoe UI", Arial, sans-serif;
@@ -24,92 +20,59 @@
             overflow: hidden;
         }
 
-        h1 {
-            font-size: 32px;
-            margin-bottom: 4px;
-            color: #ffffff;
-            text-shadow: 0 2px 8px rgba(20, 32, 92, 0.35);
-        }
+        h1 { font-size: 32px; margin-bottom: 4px; text-shadow: 0 2px 8px rgba(20,32,92,0.35); }
+        h1 span { color: #f0a500; }
+        p.sub { color: rgba(255,255,255,0.85); font-size: 14px; margin-bottom: 14px; }
 
-        h1 span {
-            color: #f0a500;
-        }
-
-        p.sub {
-            color: rgba(255, 255, 255, 0.85);
-            font-size: 14px;
-            margin-bottom: 14px;
-        }
-
-        .wrap {
-            position: relative;
-        }
+        .wrap { position: relative; }
 
         .hud {
-            display: flex;
-            justify-content: space-between;
-            width: 560px;
-            padding: 10px 8px;
-            font-size: 15px;
-            color: #1f2a44;
-            background: rgba(255, 255, 255, 0.75);
-            border-radius: 10px 10px 0 0;
-            font-weight: 600;
+            display: flex; justify-content: space-between; align-items: center;
+            width: 560px; padding: 10px 8px; font-size: 14px; color: #1f2a44;
+            background: rgba(255,255,255,0.75); border-radius: 10px 10px 0 0; font-weight: 600;
         }
-
-        .hud b {
-            color: #e8850c;
-        }
-
-        .hud .coin-badge {
-            color: #d4910a;
-        }
-
-        .hud .shield-on {
-            color: #0e9f6e;
-        }
+        .hud b { color: #e8850c; }
+        .hud .p1 { color: #0e9f6e; }
+        .hud .p2 { color: #2b4bd8; }
 
         canvas {
             border-radius: 0 0 14px 14px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.35);
             cursor: default;
         }
 
         .controls {
-            margin-top: 14px;
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.9);
+            margin-top: 14px; font-size: 13px; color: rgba(255,255,255,0.9);
+            text-align: center; line-height: 1.8;
         }
-
         .controls kbd {
-            background: rgba(255, 255, 255, 0.25);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            border-radius: 5px;
-            padding: 2px 7px;
-            color: #ffffff;
+            background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 5px; padding: 2px 7px;
         }
+        .controls .p1-label { color: #0e9f6e; font-weight: 700; }
+        .controls .p2-label { color: #ff8f8f; font-weight: 700; }
     </style>
 </head>
 <body>
     <h1>M.r <span>Racer</span></h1>
-    <p class="sub">EstateFlow arcade — cruise through Lagos, grab coins and power-ups.</p>
+    <p class="sub">EstateFlow arcade — you vs computer. Grab more coins to win!</p>
 
     <div class="wrap">
         <div class="hud">
-            <span>Distance: <b id="distance">0</b> m</span>
-            <span>🪙 Coins: <b class="coin-badge" id="coins">0</b></span>
-            <span id="shieldBadge"></span>
-            <span>Speed: <b id="speed">0</b> km/h</span>
-            <span>Best: <b id="best">0</b> m</span>
+            <span><span class="p1-label">YOU</span> 🪙 <b id="c1">0</b></span>
+            <span><span class="p1-label">YOU</span> <b id="d1">0</b>m</span>
+            <span>vs</span>
+            <span><span class="p2-label">CPU</span> <b id="d2">0</b>m</span>
+            <span><span class="p2-label">CPU</span> 🪙 <b id="c2">0</b></span>
         </div>
         <canvas id="game" width="560" height="640"></canvas>
     </div>
 
     <div class="controls">
-        <kbd>A</kbd><kbd>D</kbd> or <kbd>&larr;</kbd><kbd>&rarr;</kbd> steer &nbsp;•&nbsp;
-        <kbd>W</kbd> / <kbd>&uarr;</kbd> accelerate &nbsp;•&nbsp;
-        <kbd>S</kbd> / <kbd>&darr;</kbd> brake &nbsp;•&nbsp;
-        <kbd>Enter</kbd> start/restart
+        <span class="p1-label">YOU:</span>
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> steer &nbsp;|&nbsp;
+        <span class="p2-label">COMPUTER:</span> AI opponent<br>
+        Both drive forward — steer to grab coins, beat the AI!
     </div>
 
     <script>
@@ -118,11 +81,10 @@
         const W = canvas.width;
         const H = canvas.height;
 
-        const distanceEl = document.getElementById('distance');
-        const coinsEl = document.getElementById('coins');
-        const speedEl = document.getElementById('speed');
-        const bestEl = document.getElementById('best');
-        const shieldBadgeEl = document.getElementById('shieldBadge');
+        const c1El = document.getElementById('c1');
+        const d1El = document.getElementById('d1');
+        const c2El = document.getElementById('c2');
+        const d2El = document.getElementById('d2');
 
         const CAR_W = 44;
         const CAR_H = 76;
@@ -131,58 +93,35 @@
         const ROAD_W = ROAD_R - ROAD_L;
 
         let state = 'start';
-        let distance = 0;
-        let coins = 0;
-        let speed = 0;
-        let best = Number(localStorage.getItem('racerBest') || 0);
-        let player = { x: W / 2 - CAR_W / 2 };
-        let traffic = [];
-        let pickups = [];
         let roadOffset = 0;
-        let spawnTimer = 0;
+
+        let p1 = { x: ROAD_L + 10, y: H - 110, coins: 0, dist: 0 };
+        let p2 = { x: ROAD_R - CAR_W - 10, y: H - 110, coins: 0, dist: 0 };
+
+        let pickups = [];
         let pickupTimer = 0;
-        let shield = false;
-        let shieldTimer = 0;
-        let nitro = false;
-        let nitroTimer = 0;
         let coinSpin = 0;
 
         function resetRun() {
-            distance = 0;
-            coins = 0;
-            speed = 0;
-            player = { x: W / 2 - CAR_W / 2 };
-            traffic = [];
+            p1 = { x: ROAD_L + ROAD_W / 6 - CAR_W / 2, y: H - 110, coins: 0, dist: 0 };
+            p2 = { x: ROAD_L + ROAD_W * 5 / 6 - CAR_W / 2, y: H - 110, coins: 0, dist: 0 };
             pickups = [];
-            roadOffset = 0;
-            spawnTimer = 0;
             pickupTimer = 0;
-            shield = false;
-            shieldTimer = 0;
-            nitro = false;
-            nitroTimer = 0;
+            coinSpin = 0;
+            roadOffset = 0;
             state = 'playing';
             updateHud();
         }
 
         function updateHud() {
-            distanceEl.textContent = Math.floor(distance);
-            coinsEl.textContent = coins;
-            speedEl.textContent = Math.round(speed * 3.6);
-            bestEl.textContent = Math.floor(best);
-            if (shieldTimer > 0) {
-                shieldBadgeEl.textContent = '🛡️ Shield: ' + Math.ceil(shieldTimer / 60);
-                shieldBadgeEl.className = 'shield-on';
-            } else if (nitroTimer > 0) {
-                shieldBadgeEl.textContent = '⚡ Boost!';
-                shieldBadgeEl.className = 'shield-on';
-            } else {
-                shieldBadgeEl.textContent = '';
-            }
+            c1El.textContent = p1.coins;
+            d1El.textContent = Math.floor(p1.dist);
+            c2El.textContent = p2.coins;
+            d2El.textContent = Math.floor(p2.dist);
         }
 
         function pickLane() {
-            const cols = 3;
+            const cols = 4;
             const colW = ROAD_W / cols;
             const col = Math.floor(Math.random() * cols);
             const minX = ROAD_L + col * colW + 12;
@@ -191,30 +130,18 @@
             return minX + Math.random() * (maxX - minX);
         }
 
-        function spawnTraffic() {
-            const x = pickLane();
-            if (x === null) return;
-            traffic.push({
-                x: x,
-                y: -CAR_H - Math.random() * 220,
-                vy: 1.5 + Math.random() * speed * 0.15,
-                color: ['#a83232', '#7a1fa8', '#0e9f6e', '#e11d48', '#b06a00'][Math.floor(Math.random() * 5)]
-            });
-        }
-
         function spawnPickup() {
             const x = pickLane();
             if (x === null) return;
             const r = Math.random();
             let type;
-            if (r < 0.7) type = 'coin';
+            if (r < 0.75) type = 'coin';
             else if (r < 0.9) type = 'shield';
             else type = 'nitro';
-            pickups.push({ x: x + CAR_W / 2, y: -40, vy: speed * 0.5 + 2, type: type });
+            pickups.push({ x: x + CAR_W / 2, y: -40, vy: 2, type: type });
         }
 
         function drawRoad() {
-            // sky
             const sky = ctx.createLinearGradient(0, 0, 0, H);
             sky.addColorStop(0, '#8ed1f7');
             sky.addColorStop(0.25, '#bfe6ff');
@@ -222,17 +149,11 @@
             ctx.fillStyle = sky;
             ctx.fillRect(0, 0, W, H);
 
-            // sun
             ctx.fillStyle = 'rgba(255, 220, 100, 0.4)';
-            ctx.beginPath();
-            ctx.arc(W - 70, 70, 55, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(W - 70, 70, 55, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#ffe98a';
-            ctx.beginPath();
-            ctx.arc(W - 70, 70, 36, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(W - 70, 70, 36, 0, Math.PI * 2); ctx.fill();
 
-            // clouds
             ctx.fillStyle = 'rgba(255,255,255,0.9)';
             [-150, 0, 150].forEach((base, i) => {
                 const cx = ((base + roadOffset * 0.05) % (W + 300)) - 150 + 70 * i;
@@ -244,39 +165,28 @@
                 ctx.fill();
             });
 
-            // sidewalk shoulders
             ctx.fillStyle = '#b8bfc9';
-            ctx.fillRect(0, H - 140, ROAD_L - 12, 140);
-            ctx.fillRect(ROAD_R + 12, H - 140, W - (ROAD_R + 12), 140);
-            ctx.fillStyle = '#d7dce3';
-            ctx.fillRect(0, H - 140, ROAD_L - 12, 8);
-            ctx.fillRect(ROAD_R + 12, H - 140, W - (ROAD_R + 12), 8);
+            ctx.fillRect(0, 0, ROAD_L - 12, H);
+            ctx.fillRect(ROAD_R + 12, 0, W - (ROAD_R + 12), H);
 
-            // road
             ctx.fillStyle = '#5a616e';
             ctx.fillRect(ROAD_L, 0, ROAD_W, H);
-            // asphalt texture lines
             ctx.strokeStyle = 'rgba(0,0,0,0.08)';
             ctx.lineWidth = 2;
             for (let i = 0; i < 30; i++) {
                 const y = ((i * 47 + roadOffset * 0.7) % (H + 40)) - 20;
-                ctx.beginPath();
-                ctx.moveTo(ROAD_L, y);
-                ctx.lineTo(ROAD_R, y + 26);
-                ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(ROAD_L, y); ctx.lineTo(ROAD_R, y + 26); ctx.stroke();
             }
 
-            // edge lines
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(ROAD_L, 0, 6, H);
             ctx.fillRect(ROAD_R - 6, 0, 6, H);
 
-            // lane dashes
             ctx.strokeStyle = '#f2f4ff';
             ctx.lineWidth = 5;
             ctx.setLineDash([32, 26]);
-            for (let i = 0; i < 3; i++) {
-                const lx = ROAD_L + (ROAD_W / 3) * i + ROAD_W / 6 - 2.5;
+            for (let i = 1; i < 4; i++) {
+                const lx = ROAD_L + (ROAD_W / 4) * i;
                 ctx.beginPath();
                 ctx.moveTo(lx, roadOffset % 58);
                 ctx.lineTo(lx, H);
@@ -284,7 +194,6 @@
             }
             ctx.setLineDash([]);
 
-            // city skyline
             drawBuildings();
         }
 
@@ -300,17 +209,14 @@
                     const colors = ['#d4b896', '#c9a87c', '#b8946a', '#e0c9a6', '#cbb08e', '#d6c4a8', '#e8d8bc'];
                     ctx.fillStyle = colors[i % colors.length];
                     ctx.fillRect(x, baseY + 85 - h, w, h);
-                    // windows
                     ctx.fillStyle = 'rgba(255,255,255,0.45)';
                     for (let wy = baseY + 85 - h + 10; wy < baseY + 70; wy += 18) {
                         for (let wx = x + 6; wx < x + w - 8; wx += 11) {
                             ctx.fillRect(wx, wy, 6, 9);
                         }
                     }
-                    // balcony / shopfront near ground
                     ctx.fillStyle = 'rgba(80,55,25,0.4)';
                     ctx.fillRect(x + 2, baseY + 45, w - 4, 40);
-                    // Lagos-style awning on some buildings
                     if (i % 4 === 0) {
                         ctx.fillStyle = '#e11d48';
                         ctx.fillRect(x - 2, baseY + 48, w + 4, 6);
@@ -323,142 +229,102 @@
             }
         }
 
-        function drawCar(x, y, color, roof, isPlayer) {
-            const px = isPlayer ? x : x;
+        function drawCar(x, y, color, roof, isPlayer1) {
             ctx.fillStyle = color;
-            ctx.fillRect(px + 4, y, CAR_W - 8, CAR_H - 6);
-            ctx.fillRect(px, y + 14, CAR_W, CAR_H - 30);
+            ctx.fillRect(x + 4, y, CAR_W - 8, CAR_H - 6);
+            ctx.fillRect(x, y + 14, CAR_W, CAR_H - 30);
             ctx.fillStyle = roof;
-            ctx.fillRect(px + 8, y + 20, CAR_W - 16, 20);
-            // gold racing stripe for player
-            if (isPlayer) {
+            ctx.fillRect(x + 8, y + 20, CAR_W - 16, 20);
+            if (isPlayer1) {
                 ctx.fillStyle = '#f0a500';
-                ctx.fillRect(px + CAR_W / 2 - 4, y + 2, 8, CAR_H - 10);
+                ctx.fillRect(x + CAR_W / 2 - 4, y + 2, 8, CAR_H - 10);
+            } else {
+                ctx.fillStyle = '#f0a500';
+                ctx.fillRect(x + 4, y + CAR_H / 2 - 4, CAR_W - 8, 8);
             }
             ctx.fillStyle = '#111827';
-            ctx.fillRect(px - 3, y + 10, 7, 14);
-            ctx.fillRect(px + CAR_W - 4, y + 10, 7, 14);
-            ctx.fillRect(px - 3, y + CAR_H - 24, 7, 14);
-            ctx.fillRect(px + CAR_W - 4, y + CAR_H - 24, 7, 14);
+            ctx.fillRect(x - 3, y + 10, 7, 14);
+            ctx.fillRect(x + CAR_W - 4, y + 10, 7, 14);
+            ctx.fillRect(x - 3, y + CAR_H - 24, 7, 14);
+            ctx.fillRect(x + CAR_W - 4, y + CAR_H - 24, 7, 14);
             ctx.fillStyle = '#cde9ff';
-            ctx.fillRect(px + 8, y + 22, CAR_W - 16, 6);
-            if (isPlayer) {
-                ctx.fillStyle = '#ffe89c';
-                ctx.fillRect(px + 5, y + 4, 8, 4);
-                ctx.fillRect(px + CAR_W - 13, y + 4, 8, 4);
-                ctx.fillStyle = '#ff8f8f';
-                ctx.fillRect(px + 5, y + CAR_H - 8, 8, 4);
-                ctx.fillRect(px + CAR_W - 13, y + CAR_H - 8, 8, 4);
-            } else {
-                ctx.fillStyle = '#ff8f8f';
-                ctx.fillRect(px + 5, y + CAR_H - 8, 8, 4);
-                ctx.fillRect(px + CAR_W - 13, y + CAR_H - 8, 8, 4);
-            }
-            if (isPlayer && shieldTimer > 0) {
-                ctx.strokeStyle = 'rgba(14, 159, 110, 0.8)';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.arc(px + CAR_W / 2, y + CAR_H / 2, CAR_W, 0, Math.PI * 2);
-                ctx.stroke();
-            }
+            ctx.fillRect(x + 8, y + 22, CAR_W - 16, 6);
+            ctx.fillStyle = '#ffe89c';
+            ctx.fillRect(x + 5, y + 4, 8, 4);
+            ctx.fillRect(x + CAR_W - 13, y + 4, 8, 4);
+            ctx.fillStyle = '#ff8f8f';
+            ctx.fillRect(x + 5, y + CAR_H - 8, 8, 4);
+            ctx.fillRect(x + CAR_W - 13, y + CAR_H - 8, 8, 4);
+            // player label
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px "Segoe UI"';
+            ctx.textAlign = 'center';
+            ctx.fillText(isPlayer1 ? 'YOU' : 'CPU', x + CAR_W / 2, y - 4);
         }
 
         function update() {
-            const key = keyState;
-            let steer = 0;
-            if (key['a'] || key['arrowleft']) steer -= 1;
-            if (key['d'] || key['arrowright']) steer += 1;
+            const k = keyState;
+            const accel = 7.5;
+            const steerSpeed = 4.5;
 
-            let accel = 0;
-            if (key['w'] || key['arrowup']) accel = 1;
-            if (key['s'] || key['arrowdown']) accel = -1;
+            // P1: WASD
+            let dx1 = 0, dy1 = 0;
+            if (k['a']) dx1 -= steerSpeed;
+            if (k['d']) dx1 += steerSpeed;
+            if (k['w']) dy1 = -accel;
+            if (k['s']) dy1 = accel;
+            p1.x += dx1;
+            p1.x = Math.max(ROAD_L + 8, Math.min(ROAD_R - CAR_W - 8, p1.x));
 
-            speed += accel * 0.15;
-            const maxSpeed = nitroTimer > 0 ? 22 : 16;
-            speed = Math.max(0, Math.min(maxSpeed, speed));
-            if (accel === 0 && speed > 0) speed *= 0.995;
+            // AI: steer toward nearest coin
+            let aiTargetX = ROAD_L + ROAD_W * 5 / 6 - CAR_W / 2;
+            let nearestDist = Infinity;
+            pickups.forEach(p => {
+                if (p.type === 'coin' && p.y > p2.y - 300 && p.y < H) {
+                    const d = Math.abs(p.x - (p2.x + CAR_W / 2));
+                    if (d < nearestDist && p.y < p2.y + 120) {
+                        nearestDist = d;
+                        aiTargetX = p.x - CAR_W / 2;
+                    }
+                }
+            });
+            const aiDx = aiTargetX - p2.x;
+            p2.x += Math.max(-steerSpeed, Math.min(steerSpeed, aiDx * 0.08));
+            p2.x = Math.max(ROAD_L + 8, Math.min(ROAD_R - CAR_W - 8, p2.x));
 
-            player.x += steer * (4 + speed * 0.35);
-            player.x = Math.max(ROAD_L + 8, Math.min(ROAD_R - CAR_W - 8, player.x));
-
-            roadOffset += speed * 1.6;
-            distance += speed * 0.5;
+            roadOffset += 7;
+            p1.dist += 0.35;
+            p2.dist += 0.35;
             coinSpin += 0.08;
 
-            if (shieldTimer > 0) shieldTimer--;
-            if (nitroTimer > 0) nitroTimer--;
-
-            spawnTimer++;
-            const rate = Math.max(18, 60 - speed * 2);
-            if (spawnTimer >= rate) {
-                spawnTimer = 0;
-            }
-
             pickupTimer++;
-            if (pickupTimer >= 120) {
+            if (pickupTimer >= 60) {
                 pickupTimer = 0;
                 spawnPickup();
             }
 
-            // traffic collision
-            for (let i = traffic.length - 1; i >= 0; i--) {
-                const t = traffic[i];
-                t.y += t.vy + speed * 0.25;
-                if (t.y > H + 20) {
-                    traffic.splice(i, 1);
-                    continue;
-                }
-                const overlap =
-                    player.x < t.x + CAR_W &&
-                    player.x + CAR_W > t.x &&
-                    H - 110 < t.y + CAR_H &&
-                    H - 34 > t.y;
-                if (overlap) {
-                    if (shieldTimer > 0) {
-                        shieldTimer = 0;
-                        traffic.splice(i, 1);
-                    } else {
-                        crash();
-                        return;
-                    }
-                }
-            }
-
-            // pickups
             for (let i = pickups.length - 1; i >= 0; i--) {
                 const p = pickups[i];
-                p.y += p.vy + speed * 0.3;
-                if (p.y > H + 20) {
+                p.y += p.vy;
+                if (p.y > H + 20) { pickups.splice(i, 1); continue; }
+
+                const hitP1 = p.x > p1.x && p.x < p1.x + CAR_W && p.y > p1.y && p.y < p1.y + CAR_H;
+                const hitP2 = p.x > p2.x && p.x < p2.x + CAR_W && p.y > p2.y && p.y < p2.y + CAR_H;
+
+                if (hitP1) {
+                    if (p.type === 'coin') p1.coins++;
                     pickups.splice(i, 1);
-                    continue;
-                }
-                const pOverlap =
-                    p.x > player.x &&
-                    p.x < player.x + CAR_W &&
-                    p.y > H - 120 &&
-                    p.y < H - 24;
-                if (pOverlap) {
-                    if (p.type === 'coin') {
-                        coins++;
-                    } else if (p.type === 'shield') {
-                        shieldTimer = 180;
-                    } else if (p.type === 'nitro') {
-                        nitroTimer = 120;
-                        speed = Math.max(speed, 10);
-                    }
+                } else if (hitP2) {
+                    if (p.type === 'coin') p2.coins++;
                     pickups.splice(i, 1);
                 }
             }
 
-            if (distance > best) best = distance;
-            localStorage.setItem('racerBest', String(Math.floor(best)));
-            updateHud();
-        }
+            if (dy1 !== 0) p1.y += dy1 * 0.3;
+            if (dy2 !== 0) p2.y += dy2 * 0.3;
+            p1.y = Math.max(H - 160, Math.min(H - 80, p1.y));
+            p2.y = Math.max(H - 160, Math.min(H - 80, p2.y));
 
-        function crash() {
-            state = 'over';
-            best = Math.max(best, distance);
-            localStorage.setItem('racerBest', String(Math.floor(best)));
             updateHud();
         }
 
@@ -466,80 +332,52 @@
             ctx.clearRect(0, 0, W, H);
             drawRoad();
 
-            traffic.forEach(t => drawCar(t.x, t.y, t.color, '#3a1010', false));
-
             pickups.forEach(p => {
-                const cx = p.x;
-                const cy = p.y;
+                const cx = p.x, cy = p.y;
                 if (p.type === 'coin') {
-                    const squash = Math.abs(Math.cos(coinSpin));
+                    const s = Math.abs(Math.cos(coinSpin));
                     ctx.fillStyle = '#ffc93c';
-                    ctx.beginPath();
-                    ctx.ellipse(cx, cy, 10 * squash + 2, 12, 0, 0, Math.PI * 2);
-                    ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(cx, cy, 10 * s + 2, 12, 0, 0, Math.PI * 2); ctx.fill();
                     ctx.fillStyle = '#e8850c';
-                    ctx.beginPath();
-                    ctx.ellipse(cx, cy, 5 * squash + 1, 7, 0, 0, Math.PI * 2);
-                    ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(cx, cy, 5 * s + 1, 7, 0, 0, Math.PI * 2); ctx.fill();
                 } else if (p.type === 'shield') {
-                    ctx.strokeStyle = '#0e9f6e';
-                    ctx.lineWidth = 5;
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.fillStyle = '#0e9f6e';
-                    ctx.font = 'bold 14px "Segoe UI"';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('🛡', cx, cy + 5);
+                    ctx.strokeStyle = '#0e9f6e'; ctx.lineWidth = 5;
+                    ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.stroke();
+                    ctx.fillStyle = '#0e9f6e'; ctx.font = 'bold 14px "Segoe UI"'; ctx.textAlign = 'center';
+                    ctx.fillText('S', cx, cy + 5);
                 } else if (p.type === 'nitro') {
                     ctx.fillStyle = '#ff8f1f';
                     ctx.beginPath();
-                    ctx.moveTo(cx, cy - 14);
-                    ctx.lineTo(cx + 12, cy);
-                    ctx.lineTo(cx, cy + 14);
-                    ctx.lineTo(cx - 12, cy);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 12px "Segoe UI"';
-                    ctx.textAlign = 'center';
+                    ctx.moveTo(cx, cy - 14); ctx.lineTo(cx + 12, cy); ctx.lineTo(cx, cy + 14); ctx.lineTo(cx - 12, cy);
+                    ctx.closePath(); ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px "Segoe UI"'; ctx.textAlign = 'center';
                     ctx.fillText('N', cx, cy + 5);
                 }
             });
 
-            if (state !== 'over') {
-                drawCar(player.x, H - 110, '#0e9f6e', '#0a6b4c', true);
-            }
+            drawCar(p1.x, p1.y, '#0e9f6e', '#0a6b4c', true);
+            drawCar(p2.x, p2.y, '#2b4bd8', '#16306b', false);
 
             if (state === 'start') {
-                ctx.fillStyle = 'rgba(20, 32, 92, 0.82)';
+                ctx.fillStyle = 'rgba(20,32,92,0.82)';
                 ctx.fillRect(0, 0, W, H);
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#f0a500';
-                ctx.font = 'bold 44px "Segoe UI", Arial';
-                ctx.fillText('M.R RACER', W / 2, H / 2 - 50);
+                ctx.font = 'bold 42px "Segoe UI"';
+                ctx.fillText('M.R RACER', W / 2, H / 2 - 60);
                 ctx.fillStyle = '#ffffff';
-                ctx.font = '17px "Segoe UI", Arial';
-                ctx.fillText('Steer: A/D or arrow keys', W / 2, H / 2 - 10);
-                ctx.fillText('Accelerate: W  |  Brake: S', W / 2, H / 2 + 18);
-                ctx.fillText('Open road — grab 🪙 coins and power-ups!', W / 2, H / 2 + 46);
+                ctx.font = '18px "Segoe UI"';
+                ctx.fillText('YOU vs COMPUTER', W / 2, H / 2 - 26);
+                ctx.font = '16px "Segoe UI"';
+                ctx.fillStyle = '#0e9f6e';
+                ctx.fillText('You: W/A/S/D', W / 2, H / 2 + 10);
+                ctx.fillStyle = '#ff8f8f';
+                ctx.fillText('Computer: AI opponent', W / 2, H / 2 + 36);
+                ctx.fillStyle = '#dfe5ff';
+                ctx.fillText('Race down Lagos, grab 🪙 coins!', W / 2, H / 2 + 64);
                 ctx.fillStyle = '#ffe98a';
-                ctx.font = 'bold 18px "Segoe UI", Arial';
-                ctx.fillText('Press Enter to race', W / 2, H / 2 + 84);
-            } else if (state === 'over') {
-                ctx.fillStyle = 'rgba(20, 32, 92, 0.85)';
-                ctx.fillRect(0, 0, W, H);
-                ctx.textAlign = 'center';
-                ctx.fillStyle = '#ff5f5f';
-                ctx.font = 'bold 44px "Segoe UI", Arial';
-                ctx.fillText('CRASHED!', W / 2, H / 2 - 50);
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '19px "Segoe UI", Arial';
-                ctx.fillText('Distance: ' + Math.floor(distance) + ' m   |   Coins: ' + coins, W / 2, H / 2 - 8);
-                ctx.fillText('Best: ' + Math.floor(best) + ' m', W / 2, H / 2 + 22);
-                ctx.fillStyle = '#ffe98a';
-                ctx.font = 'bold 18px "Segoe UI", Arial';
-                ctx.fillText('Press Enter to race again', W / 2, H / 2 + 58);
+                ctx.font = 'bold 18px "Segoe UI"';
+                ctx.fillText('Press Enter to race', W / 2, H / 2 + 98);
             }
         }
 
@@ -547,20 +385,16 @@
         document.addEventListener('keydown', e => {
             keyState[e.key.toLowerCase()] = true;
             if (e.key === 'Enter' && state !== 'playing') resetRun();
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(e.key.toLowerCase())) e.preventDefault();
         });
-        document.addEventListener('keyup', e => {
-            keyState[e.key.toLowerCase()] = false;
-        });
+        document.addEventListener('keyup', e => { keyState[e.key.toLowerCase()] = false; });
 
         function loop() {
             if (state === 'playing') update();
             draw();
             requestAnimationFrame(loop);
         }
-
-        resetRun();
         state = 'start';
-        updateHud();
         loop();
     </script>
 </body>
