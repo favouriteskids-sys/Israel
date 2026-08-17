@@ -212,7 +212,7 @@
         }
 
         function update() {
-            var spd = 4;
+            var spd = 12;
 
             if (k['a'] || k['arrowleft']) p1.px -= spd;
             if (k['d'] || k['arrowright']) p1.px += spd;
@@ -230,9 +230,9 @@
             p2.px += (tx - p2.px) * 0.05;
             p2.px = Math.max(RL + 4, Math.min(RR - 52, p2.px));
 
-            off += 5;
-            p1.dist += 0.25;
-            p2.dist += 0.25;
+            off += 12;
+            p1.dist += 0.6;
+            p2.dist += 0.6;
             spin += 0.08;
 
             t++;
@@ -240,7 +240,7 @@
 
             for (var i = coins.length - 1; i >= 0; i--) {
                 var cn = coins[i];
-                cn.py += 2.5;
+                cn.py += 6;
                 if (cn.py > H + 20) { coins.splice(i, 1); continue; }
 
                 if (cn.px > p1.px - 6 && cn.px < p1.px + 54 && cn.py > p1.py && cn.py < p1.py + 60) {
