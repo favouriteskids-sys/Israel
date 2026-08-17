@@ -324,7 +324,7 @@
 
         document.addEventListener('keydown', function(e) {
             keys[e.key.toLowerCase()] = true;
-            if (gameState === 'menu' && (e.key === 'Enter' || e.key === ' ')) {
+            if (gameState === 'menu') {
                 e.preventDefault();
                 startGame();
             }
@@ -338,6 +338,13 @@
         canvas.addEventListener('click', function() {
             if (gameState === 'menu') startGame();
         });
+
+        document.body.addEventListener('click', function() {
+            if (gameState === 'menu') startGame();
+        });
+
+        document.body.setAttribute('tabindex', '0');
+        document.body.focus();
 
         function loop() {
             if (gameState === 'play') update();
