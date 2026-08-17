@@ -377,7 +377,7 @@
                 ctx.fillText('Race down Lagos, grab 🪙 coins!', W / 2, H / 2 + 64);
                 ctx.fillStyle = '#ffe98a';
                 ctx.font = 'bold 18px "Segoe UI"';
-                ctx.fillText('Press Enter to race', W / 2, H / 2 + 98);
+                ctx.fillText('Press Enter or Click to race', W / 2, H / 2 + 98);
             }
         }
 
@@ -388,6 +388,7 @@
             if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(e.key.toLowerCase())) e.preventDefault();
         });
         document.addEventListener('keyup', e => { keyState[e.key.toLowerCase()] = false; });
+        canvas.addEventListener('click', () => { if (state !== 'playing') resetRun(); });
 
         function loop() {
             if (state === 'playing') update();
