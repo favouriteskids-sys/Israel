@@ -147,6 +147,12 @@
 
         function drawLambo(px, py, col, roof, lbl) {
             var cw = 48, ch = 60;
+
+            if (lbl === 'YOU') {
+                x.shadowColor = '#f0a500';
+                x.shadowBlur = 18;
+            }
+
             x.fillStyle = col;
             x.beginPath();
             x.moveTo(px + 5, py);
@@ -200,6 +206,9 @@
             x.font = 'bold 10px "Segoe UI"';
             x.textAlign = 'center';
             x.fillText(lbl, px + cw / 2, py - 4);
+
+            x.shadowColor = 'transparent';
+            x.shadowBlur = 0;
         }
 
         function update() {
