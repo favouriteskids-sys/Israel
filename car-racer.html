@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mr Racer — EstateFlow Arcade</title>
+    <title>M.r Racer — EstateFlow Arcade</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
 
         body {
             font-family: "Segoe UI", Arial, sans-serif;
-            background: linear-gradient(180deg, #4aa8e0 0%, #2f7fd0 100%);
+            background: linear-gradient(180deg, #5bc0de 0%, #d6a86c 100%);
             color: #ffffff;
             min-height: 100vh;
             display: flex;
@@ -91,8 +91,8 @@
     </style>
 </head>
 <body>
-    <h1>Mr <span>Racer</span></h1>
-    <p class="sub">An EstateFlow arcade game — grab coins, catch power-ups, beat your best.</p>
+    <h1>M.r <span>Racer</span></h1>
+    <p class="sub">EstateFlow arcade — cruise through Lagos, grab coins and power-ups.</p>
 
     <div class="wrap">
         <div class="hud">
@@ -297,20 +297,26 @@
                     const h = 90 + ((i * 137) % 140);
                     const w = 44 + ((i * 53) % 20);
                     const x = left ? ROAD_L - w - 6 : ROAD_R + 6;
-                    const colors = ['#8fa3c9', '#a8b7d4', '#7d8db1', '#c2c9dc', '#95a7c9', '#b0bcd4', '#8797bd'];
+                    const colors = ['#d4b896', '#c9a87c', '#b8946a', '#e0c9a6', '#cbb08e', '#d6c4a8', '#e8d8bc'];
                     ctx.fillStyle = colors[i % colors.length];
                     ctx.fillRect(x, baseY + 85 - h, w, h);
-                    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                    // windows
+                    ctx.fillStyle = 'rgba(255,255,255,0.45)';
                     for (let wy = baseY + 85 - h + 10; wy < baseY + 70; wy += 18) {
                         for (let wx = x + 6; wx < x + w - 8; wx += 11) {
                             ctx.fillRect(wx, wy, 6, 9);
                         }
                     }
-                    // shopfront near the ground
-                    ctx.fillStyle = 'rgba(40,48,66,0.5)';
+                    // balcony / shopfront near ground
+                    ctx.fillStyle = 'rgba(80,55,25,0.4)';
                     ctx.fillRect(x + 2, baseY + 45, w - 4, 40);
+                    // Lagos-style awning on some buildings
+                    if (i % 4 === 0) {
+                        ctx.fillStyle = '#e11d48';
+                        ctx.fillRect(x - 2, baseY + 48, w + 4, 6);
+                    }
                     if (i % 3 === 0) {
-                        ctx.fillStyle = '#5a6478';
+                        ctx.fillStyle = '#8a7050';
                         ctx.fillRect(x + w / 2 - 2, baseY + 85 - h - 16, 4, 18);
                     }
                 }
@@ -324,6 +330,11 @@
             ctx.fillRect(px, y + 14, CAR_W, CAR_H - 30);
             ctx.fillStyle = roof;
             ctx.fillRect(px + 8, y + 20, CAR_W - 16, 20);
+            // gold racing stripe for player
+            if (isPlayer) {
+                ctx.fillStyle = '#f0a500';
+                ctx.fillRect(px + CAR_W / 2 - 4, y + 2, 8, CAR_H - 10);
+            }
             ctx.fillStyle = '#111827';
             ctx.fillRect(px - 3, y + 10, 7, 14);
             ctx.fillRect(px + CAR_W - 4, y + 10, 7, 14);
@@ -497,7 +508,7 @@
             });
 
             if (state !== 'over') {
-                drawCar(player.x, H - 110, '#2b4bd8', '#16306b', true);
+                drawCar(player.x, H - 110, '#0e9f6e', '#0a6b4c', true);
             }
 
             if (state === 'start') {
@@ -506,7 +517,7 @@
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#f0a500';
                 ctx.font = 'bold 44px "Segoe UI", Arial';
-                ctx.fillText('MR RACER', W / 2, H / 2 - 50);
+                ctx.fillText('M.R RACER', W / 2, H / 2 - 50);
                 ctx.fillStyle = '#ffffff';
                 ctx.font = '17px "Segoe UI", Arial';
                 ctx.fillText('Steer: A/D or arrow keys', W / 2, H / 2 - 10);
