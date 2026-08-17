@@ -66,7 +66,7 @@
         const W = canvas.width;
         const H = canvas.height;
 
-        const CAR_W = 44, CAR_H = 76;
+        const CAR_W = 52, CAR_H = 65;
         const ROAD_L = 64, ROAD_R = W - 64, ROAD_W = ROAD_R - ROAD_L;
 
         let gameState = 'menu';
@@ -192,28 +192,74 @@
         }
 
         function drawCar(x, y, color, roof, label) {
+            // low, wide Lamborghini body
             ctx.fillStyle = color;
-            ctx.fillRect(x + 4, y, CAR_W - 8, CAR_H - 6);
-            ctx.fillRect(x, y + 14, CAR_W, CAR_H - 30);
+            // main body - wide and low
+            ctx.beginPath();
+            ctx.moveTo(x + 6, y);
+            ctx.lineTo(x + CAR_W - 6, y);
+            ctx.lineTo(x + CAR_W, y + 16);
+            ctx.lineTo(x + CAR_W, y + CAR_H - 20);
+            ctx.lineTo(x + CAR_W - 4, y + CAR_H);
+            ctx.lineTo(x + 4, y + CAR_H);
+            ctx.lineTo(x, y + CAR_H - 20);
+            ctx.lineTo(x, y + 16);
+            ctx.closePath();
+            ctx.fill();
+            // windshield - sharp angle
             ctx.fillStyle = roof;
-            ctx.fillRect(x + 8, y + 20, CAR_W - 16, 20);
+            ctx.beginPath();
+            ctx.moveTo(x + 10, y + 14);
+            ctx.lineTo(x + CAR_W - 10, y + 14);
+            ctx.lineTo(x + CAR_W - 6, y + 30);
+            ctx.lineTo(x + 6, y + 30);
+            ctx.closePath();
+            ctx.fill();
+            // gold racing stripe
             ctx.fillStyle = '#f0a500';
-            ctx.fillRect(x + CAR_W / 2 - 3, y + 4, 6, CAR_H - 12);
-            ctx.fillStyle = '#111827';
-            ctx.fillRect(x - 3, y + 10, 7, 14);
-            ctx.fillRect(x + CAR_W - 4, y + 10, 7, 14);
-            ctx.fillRect(x - 3, y + CAR_H - 24, 7, 14);
-            ctx.fillRect(x + CAR_W - 4, y + CAR_H - 24, 7, 14);
-            ctx.fillStyle = '#cde9ff';
-            ctx.fillRect(x + 8, y + 22, CAR_W - 16, 6);
+            ctx.fillRect(x + CAR_W / 2 - 3, y + 2, 6, CAR_H - 6);
+            // angular headlights
             ctx.fillStyle = '#ffe89c';
-            ctx.fillRect(x + 5, y + 4, 8, 4);
-            ctx.fillRect(x + CAR_W - 13, y + 4, 8, 4);
-            ctx.fillStyle = '#ff8f8f';
-            ctx.fillRect(x + 5, y + CAR_H - 8, 8, 4);
-            ctx.fillRect(x + CAR_W - 13, y + CAR_H - 8, 8, 4);
+            ctx.beginPath();
+            ctx.moveTo(x + 2, y + 4);
+            ctx.lineTo(x + 14, y);
+            ctx.lineTo(x + 14, y + 8);
+            ctx.lineTo(x + 2, y + 8);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(x + CAR_W - 2, y + 4);
+            ctx.lineTo(x + CAR_W - 14, y);
+            ctx.lineTo(x + CAR_W - 14, y + 8);
+            ctx.lineTo(x + CAR_W - 2, y + 8);
+            ctx.closePath();
+            ctx.fill();
+            // rear lights - aggressive
+            ctx.fillStyle = '#ff4444';
+            ctx.fillRect(x + 2, y + CAR_H - 6, 14, 4);
+            ctx.fillRect(x + CAR_W - 16, y + CAR_H - 6, 14, 4);
+            // wheels - wider
+            ctx.fillStyle = '#111827';
+            ctx.fillRect(x - 2, y + 10, 6, 14);
+            ctx.fillRect(x + CAR_W - 4, y + 10, 6, 14);
+            ctx.fillRect(x - 2, y + CAR_H - 24, 6, 14);
+            ctx.fillRect(x + CAR_W - 4, y + CAR_H - 24, 6, 14);
+            // side air intakes
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(x + 1, y + 32, 8, 12);
+            ctx.fillRect(x + CAR_W - 9, y + 32, 8, 12);
+            // windshield glass
+            ctx.fillStyle = '#cde9ff';
+            ctx.beginPath();
+            ctx.moveTo(x + 12, y + 16);
+            ctx.lineTo(x + CAR_W - 12, y + 16);
+            ctx.lineTo(x + CAR_W - 8, y + 28);
+            ctx.lineTo(x + 8, y + 28);
+            ctx.closePath();
+            ctx.fill();
+            // label
             ctx.fillStyle = '#fff';
-            ctx.font = 'bold 11px "Segoe UI"';
+            ctx.font = 'bold 10px "Segoe UI"';
             ctx.textAlign = 'center';
             ctx.fillText(label, x + CAR_W / 2, y - 4);
         }
