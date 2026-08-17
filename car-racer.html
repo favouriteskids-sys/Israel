@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M.r Racer — 2 Player</title>
+    <title>M.r Racer — You vs Computer</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             font-family: "Segoe UI", Arial, sans-serif;
             background: linear-gradient(180deg, #5bc0de 0%, #d6a86c 100%);
-            color: #ffffff;
+            color: #fff;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -19,13 +18,9 @@
             padding: 20px;
             overflow: hidden;
         }
-
         h1 { font-size: 32px; margin-bottom: 4px; text-shadow: 0 2px 8px rgba(20,32,92,0.35); }
         h1 span { color: #f0a500; }
         p.sub { color: rgba(255,255,255,0.85); font-size: 14px; margin-bottom: 14px; }
-
-        .wrap { position: relative; }
-
         .hud {
             display: flex; justify-content: space-between; align-items: center;
             width: 560px; padding: 10px 8px; font-size: 14px; color: #1f2a44;
@@ -33,14 +28,11 @@
         }
         .hud b { color: #e8850c; }
         .hud .p1 { color: #0e9f6e; }
-        .hud .p2 { color: #2b4bd8; }
-
+        .hud .p2 { color: #ff6b6b; }
         canvas {
             border-radius: 0 0 14px 14px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-            cursor: default;
         }
-
         .controls {
             margin-top: 14px; font-size: 13px; color: rgba(255,255,255,0.9);
             text-align: center; line-height: 1.8;
@@ -49,30 +41,23 @@
             background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.4);
             border-radius: 5px; padding: 2px 7px;
         }
-        .controls .p1-label { color: #0e9f6e; font-weight: 700; }
-        .controls .p2-label { color: #ff8f8f; font-weight: 700; }
     </style>
 </head>
 <body>
     <h1>M.r <span>Racer</span></h1>
     <p class="sub">EstateFlow arcade — you vs computer. Grab more coins to win!</p>
 
-    <div class="wrap">
-        <div class="hud">
-            <span><span class="p1-label">YOU</span> 🪙 <b id="c1">0</b></span>
-            <span><span class="p1-label">YOU</span> <b id="d1">0</b>m</span>
-            <span>vs</span>
-            <span><span class="p2-label">CPU</span> <b id="d2">0</b>m</span>
-            <span><span class="p2-label">CPU</span> 🪙 <b id="c2">0</b></span>
-        </div>
-        <canvas id="game" width="560" height="640"></canvas>
+    <div class="hud">
+        <span><span class="p1">YOU</span> 🪙 <b id="c1">0</b></span>
+        <span><span class="p1">YOU</span> <b id="d1">0</b>m</span>
+        <span>vs</span>
+        <span><span class="p2">CPU</span> <b id="d2">0</b>m</span>
+        <span><span class="p2">CPU</span> 🪙 <b id="c2">0</b></span>
     </div>
-
+    <canvas id="game" width="560" height="640"></canvas>
     <div class="controls">
-        <span class="p1-label">YOU:</span>
-        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> steer &nbsp;|&nbsp;
-        <span class="p2-label">COMPUTER:</span> AI opponent<br>
-        Both drive forward — steer to grab coins, beat the AI!
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to steer &nbsp;|&nbsp;
+        Both drive forward — steer to grab 🪙 coins!
     </div>
 
     <script>
@@ -81,43 +66,35 @@
         const W = canvas.width;
         const H = canvas.height;
 
-        const c1El = document.getElementById('c1');
-        const d1El = document.getElementById('d1');
-        const c2El = document.getElementById('c2');
-        const d2El = document.getElementById('d2');
+        const CAR_W = 44, CAR_H = 76;
+        const ROAD_L = 64, ROAD_R = W - 64, ROAD_W = ROAD_R - ROAD_L;
 
-        const CAR_W = 44;
-        const CAR_H = 76;
-        const ROAD_L = 64;
-        const ROAD_R = W - 64;
-        const ROAD_W = ROAD_R - ROAD_L;
-
-        let state = 'start';
+        let gameState = 'menu';
         let roadOffset = 0;
-
-        let p1 = { x: ROAD_L + 10, y: H - 110, coins: 0, dist: 0 };
-        let p2 = { x: ROAD_R - CAR_W - 10, y: H - 110, coins: 0, dist: 0 };
-
+        let coinSpin = 0;
         let pickups = [];
         let pickupTimer = 0;
-        let coinSpin = 0;
 
-        function resetRun() {
-            p1 = { x: ROAD_L + ROAD_W / 6 - CAR_W / 2, y: H - 110, coins: 0, dist: 0 };
-            p2 = { x: ROAD_L + ROAD_W * 5 / 6 - CAR_W / 2, y: H - 110, coins: 0, dist: 0 };
+        let p1 = { x: 0, y: H - 110, coins: 0, dist: 0 };
+        let p2 = { x: 0, y: H - 110, coins: 0, dist: 0 };
+
+        const keys = {};
+
+        function startGame() {
+            p1 = { x: ROAD_L + ROAD_W / 4, y: H - 110, coins: 0, dist: 0 };
+            p2 = { x: ROAD_L + ROAD_W * 3 / 4, y: H - 110, coins: 0, dist: 0 };
             pickups = [];
             pickupTimer = 0;
             coinSpin = 0;
             roadOffset = 0;
-            state = 'playing';
-            updateHud();
+            gameState = 'play';
         }
 
         function updateHud() {
-            c1El.textContent = p1.coins;
-            d1El.textContent = Math.floor(p1.dist);
-            c2El.textContent = p2.coins;
-            d2El.textContent = Math.floor(p2.dist);
+            document.getElementById('c1').textContent = p1.coins;
+            document.getElementById('d1').textContent = Math.floor(p1.dist);
+            document.getElementById('c2').textContent = p2.coins;
+            document.getElementById('d2').textContent = Math.floor(p2.dist);
         }
 
         function pickLane() {
@@ -134,11 +111,8 @@
             const x = pickLane();
             if (x === null) return;
             const r = Math.random();
-            let type;
-            if (r < 0.75) type = 'coin';
-            else if (r < 0.9) type = 'shield';
-            else type = 'nitro';
-            pickups.push({ x: x + CAR_W / 2, y: -40, vy: 2, type: type });
+            const type = r < 0.75 ? 'coin' : r < 0.9 ? 'shield' : 'nitro';
+            pickups.push({ x: x + CAR_W / 2, y: -40, type: type });
         }
 
         function drawRoad() {
@@ -149,7 +123,7 @@
             ctx.fillStyle = sky;
             ctx.fillRect(0, 0, W, H);
 
-            ctx.fillStyle = 'rgba(255, 220, 100, 0.4)';
+            ctx.fillStyle = 'rgba(255,220,100,0.4)';
             ctx.beginPath(); ctx.arc(W - 70, 70, 55, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#ffe98a';
             ctx.beginPath(); ctx.arc(W - 70, 70, 36, 0, Math.PI * 2); ctx.fill();
@@ -171,6 +145,7 @@
 
             ctx.fillStyle = '#5a616e';
             ctx.fillRect(ROAD_L, 0, ROAD_W, H);
+
             ctx.strokeStyle = 'rgba(0,0,0,0.08)';
             ctx.lineWidth = 2;
             for (let i = 0; i < 30; i++) {
@@ -194,10 +169,6 @@
             }
             ctx.setLineDash([]);
 
-            drawBuildings();
-        }
-
-        function drawBuildings() {
             const count = Math.ceil(H / 85) + 2;
             for (let side = -1; side <= 1; side += 2) {
                 const left = side < 0;
@@ -206,42 +177,28 @@
                     const h = 90 + ((i * 137) % 140);
                     const w = 44 + ((i * 53) % 20);
                     const x = left ? ROAD_L - w - 6 : ROAD_R + 6;
-                    const colors = ['#d4b896', '#c9a87c', '#b8946a', '#e0c9a6', '#cbb08e', '#d6c4a8', '#e8d8bc'];
+                    const colors = ['#d4b896','#c9a87c','#b8946a','#e0c9a6','#cbb08e'];
                     ctx.fillStyle = colors[i % colors.length];
                     ctx.fillRect(x, baseY + 85 - h, w, h);
                     ctx.fillStyle = 'rgba(255,255,255,0.45)';
-                    for (let wy = baseY + 85 - h + 10; wy < baseY + 70; wy += 18) {
-                        for (let wx = x + 6; wx < x + w - 8; wx += 11) {
+                    for (let wy = baseY + 85 - h + 10; wy < baseY + 70; wy += 18)
+                        for (let wx = x + 6; wx < x + w - 8; wx += 11)
                             ctx.fillRect(wx, wy, 6, 9);
-                        }
-                    }
                     ctx.fillStyle = 'rgba(80,55,25,0.4)';
                     ctx.fillRect(x + 2, baseY + 45, w - 4, 40);
-                    if (i % 4 === 0) {
-                        ctx.fillStyle = '#e11d48';
-                        ctx.fillRect(x - 2, baseY + 48, w + 4, 6);
-                    }
-                    if (i % 3 === 0) {
-                        ctx.fillStyle = '#8a7050';
-                        ctx.fillRect(x + w / 2 - 2, baseY + 85 - h - 16, 4, 18);
-                    }
+                    if (i % 4 === 0) { ctx.fillStyle = '#e11d48'; ctx.fillRect(x - 2, baseY + 48, w + 4, 6); }
                 }
             }
         }
 
-        function drawCar(x, y, color, roof, isPlayer1) {
+        function drawCar(x, y, color, roof, label) {
             ctx.fillStyle = color;
             ctx.fillRect(x + 4, y, CAR_W - 8, CAR_H - 6);
             ctx.fillRect(x, y + 14, CAR_W, CAR_H - 30);
             ctx.fillStyle = roof;
             ctx.fillRect(x + 8, y + 20, CAR_W - 16, 20);
-            if (isPlayer1) {
-                ctx.fillStyle = '#f0a500';
-                ctx.fillRect(x + CAR_W / 2 - 4, y + 2, 8, CAR_H - 10);
-            } else {
-                ctx.fillStyle = '#f0a500';
-                ctx.fillRect(x + 4, y + CAR_H / 2 - 4, CAR_W - 8, 8);
-            }
+            ctx.fillStyle = '#f0a500';
+            ctx.fillRect(x + CAR_W / 2 - 3, y + 4, 6, CAR_H - 12);
             ctx.fillStyle = '#111827';
             ctx.fillRect(x - 3, y + 10, 7, 14);
             ctx.fillRect(x + CAR_W - 4, y + 10, 7, 14);
@@ -255,41 +212,35 @@
             ctx.fillStyle = '#ff8f8f';
             ctx.fillRect(x + 5, y + CAR_H - 8, 8, 4);
             ctx.fillRect(x + CAR_W - 13, y + CAR_H - 8, 8, 4);
-            // player label
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#fff';
             ctx.font = 'bold 11px "Segoe UI"';
             ctx.textAlign = 'center';
-            ctx.fillText(isPlayer1 ? 'YOU' : 'CPU', x + CAR_W / 2, y - 4);
+            ctx.fillText(label, x + CAR_W / 2, y - 4);
         }
 
         function update() {
-            const k = keyState;
-            const accel = 7.5;
-            const steerSpeed = 4.5;
+            const steerSpeed = 5;
 
-            // P1: WASD
-            let dx1 = 0, dy1 = 0;
-            if (k['a']) dx1 -= steerSpeed;
-            if (k['d']) dx1 += steerSpeed;
-            if (k['w']) dy1 = -accel;
-            if (k['s']) dy1 = accel;
-            p1.x += dx1;
+            if (keys['a'] || keys['arrowleft']) p1.x -= steerSpeed;
+            if (keys['d'] || keys['arrowright']) p1.x += steerSpeed;
+            if (keys['w'] || keys['arrowup']) p1.y -= steerSpeed * 0.6;
+            if (keys['s'] || keys['arrowdown']) p1.y += steerSpeed * 0.6;
             p1.x = Math.max(ROAD_L + 8, Math.min(ROAD_R - CAR_W - 8, p1.x));
+            p1.y = Math.max(H - 180, Math.min(H - 80, p1.y));
 
-            // AI: steer toward nearest coin
-            let aiTargetX = ROAD_L + ROAD_W * 5 / 6 - CAR_W / 2;
-            let nearestDist = Infinity;
+            let aiTargetX = ROAD_L + ROAD_W * 3 / 4;
+            let bestDist = 999;
             pickups.forEach(p => {
-                if (p.type === 'coin' && p.y > p2.y - 300 && p.y < H) {
-                    const d = Math.abs(p.x - (p2.x + CAR_W / 2));
-                    if (d < nearestDist && p.y < p2.y + 120) {
-                        nearestDist = d;
-                        aiTargetX = p.x - CAR_W / 2;
-                    }
+                if (p.type !== 'coin') return;
+                const py = p.y;
+                const px = p.x - CAR_W / 2;
+                if (py < p2.y + 50 && py > p2.y - 200) {
+                    const d = Math.abs(px - p2.x);
+                    if (d < bestDist) { bestDist = d; aiTargetX = px; }
                 }
             });
             const aiDx = aiTargetX - p2.x;
-            p2.x += Math.max(-steerSpeed, Math.min(steerSpeed, aiDx * 0.08));
+            p2.x += Math.max(-steerSpeed, Math.min(steerSpeed, aiDx * 0.06));
             p2.x = Math.max(ROAD_L + 8, Math.min(ROAD_R - CAR_W - 8, p2.x));
 
             roadOffset += 7;
@@ -298,32 +249,25 @@
             coinSpin += 0.08;
 
             pickupTimer++;
-            if (pickupTimer >= 60) {
+            if (pickupTimer >= 50) {
                 pickupTimer = 0;
                 spawnPickup();
             }
 
             for (let i = pickups.length - 1; i >= 0; i--) {
                 const p = pickups[i];
-                p.y += p.vy;
+                p.y += 3;
                 if (p.y > H + 20) { pickups.splice(i, 1); continue; }
 
-                const hitP1 = p.x > p1.x && p.x < p1.x + CAR_W && p.y > p1.y && p.y < p1.y + CAR_H;
-                const hitP2 = p.x > p2.x && p.x < p2.x + CAR_W && p.y > p2.y && p.y < p2.y + CAR_H;
-
-                if (hitP1) {
+                if (p.x > p1.x && p.x < p1.x + CAR_W && p.y > p1.y && p.y < p1.y + CAR_H) {
                     if (p.type === 'coin') p1.coins++;
-                    pickups.splice(i, 1);
-                } else if (hitP2) {
+                    pickups.splice(i, 1); continue;
+                }
+                if (p.x > p2.x && p.x < p2.x + CAR_W && p.y > p2.y && p.y < p2.y + CAR_H) {
                     if (p.type === 'coin') p2.coins++;
                     pickups.splice(i, 1);
                 }
             }
-
-            if (dy1 !== 0) p1.y += dy1 * 0.3;
-            if (dy2 !== 0) p2.y += dy2 * 0.3;
-            p1.y = Math.max(H - 160, Math.min(H - 80, p1.y));
-            p2.y = Math.max(H - 160, Math.min(H - 80, p2.y));
 
             updateHud();
         }
@@ -343,59 +287,64 @@
                 } else if (p.type === 'shield') {
                     ctx.strokeStyle = '#0e9f6e'; ctx.lineWidth = 5;
                     ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.stroke();
-                    ctx.fillStyle = '#0e9f6e'; ctx.font = 'bold 14px "Segoe UI"'; ctx.textAlign = 'center';
-                    ctx.fillText('S', cx, cy + 5);
                 } else if (p.type === 'nitro') {
                     ctx.fillStyle = '#ff8f1f';
                     ctx.beginPath();
-                    ctx.moveTo(cx, cy - 14); ctx.lineTo(cx + 12, cy); ctx.lineTo(cx, cy + 14); ctx.lineTo(cx - 12, cy);
+                    ctx.moveTo(cx, cy - 14); ctx.lineTo(cx + 12, cy);
+                    ctx.lineTo(cx, cy + 14); ctx.lineTo(cx - 12, cy);
                     ctx.closePath(); ctx.fill();
-                    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px "Segoe UI"'; ctx.textAlign = 'center';
-                    ctx.fillText('N', cx, cy + 5);
                 }
             });
 
-            drawCar(p1.x, p1.y, '#0e9f6e', '#0a6b4c', true);
-            drawCar(p2.x, p2.y, '#2b4bd8', '#16306b', false);
+            drawCar(p1.x, p1.y, '#0e9f6e', '#0a6b4c', 'YOU');
+            drawCar(p2.x, p2.y, '#a83232', '#6b1a1a', 'CPU');
 
-            if (state === 'start') {
-                ctx.fillStyle = 'rgba(20,32,92,0.82)';
+            if (gameState === 'menu') {
+                ctx.fillStyle = 'rgba(20,32,92,0.85)';
                 ctx.fillRect(0, 0, W, H);
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#f0a500';
-                ctx.font = 'bold 42px "Segoe UI"';
-                ctx.fillText('M.R RACER', W / 2, H / 2 - 60);
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '18px "Segoe UI"';
-                ctx.fillText('YOU vs COMPUTER', W / 2, H / 2 - 26);
+                ctx.font = 'bold 44px "Segoe UI"';
+                ctx.fillText('M.R RACER', W / 2, H / 2 - 70);
+                ctx.fillStyle = '#fff';
+                ctx.font = '20px "Segoe UI"';
+                ctx.fillText('YOU  vs  COMPUTER', W / 2, H / 2 - 30);
                 ctx.font = '16px "Segoe UI"';
                 ctx.fillStyle = '#0e9f6e';
-                ctx.fillText('You: W/A/S/D', W / 2, H / 2 + 10);
+                ctx.fillText('You: W/A/S/D to steer', W / 2, H / 2 + 10);
                 ctx.fillStyle = '#ff8f8f';
-                ctx.fillText('Computer: AI opponent', W / 2, H / 2 + 36);
+                ctx.fillText('Computer: chases coins automatically', W / 2, H / 2 + 38);
                 ctx.fillStyle = '#dfe5ff';
-                ctx.fillText('Race down Lagos, grab 🪙 coins!', W / 2, H / 2 + 64);
+                ctx.fillText('Collect more coins to win!', W / 2, H / 2 + 66);
                 ctx.fillStyle = '#ffe98a';
-                ctx.font = 'bold 18px "Segoe UI"';
-                ctx.fillText('Press Enter or Click to race', W / 2, H / 2 + 98);
+                ctx.font = 'bold 20px "Segoe UI"';
+                ctx.fillText('Click or press Enter to start', W / 2, H / 2 + 110);
             }
         }
 
-        const keyState = {};
-        document.addEventListener('keydown', e => {
-            keyState[e.key.toLowerCase()] = true;
-            if (e.key === 'Enter' && state !== 'playing') resetRun();
-            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(e.key.toLowerCase())) e.preventDefault();
+        document.addEventListener('keydown', function(e) {
+            keys[e.key.toLowerCase()] = true;
+            if (gameState === 'menu' && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                startGame();
+            }
+            if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) e.preventDefault();
         });
-        document.addEventListener('keyup', e => { keyState[e.key.toLowerCase()] = false; });
-        canvas.addEventListener('click', () => { if (state !== 'playing') resetRun(); });
+
+        document.addEventListener('keyup', function(e) {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        canvas.addEventListener('click', function() {
+            if (gameState === 'menu') startGame();
+        });
 
         function loop() {
-            if (state === 'playing') update();
+            if (gameState === 'play') update();
             draw();
             requestAnimationFrame(loop);
         }
-        state = 'start';
+
         loop();
     </script>
 </body>
