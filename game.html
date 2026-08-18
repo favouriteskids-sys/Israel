@@ -1,508 +1,276 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stack Hero — Defend the Real Stack</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: "Segoe UI", Arial, sans-serif;
-            background: linear-gradient(160deg, #1b2f8a 0%, #2b4bd8 60%, #14205c 100%);
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-
-        h1 {
-            font-size: 34px;
-            margin: 16px 0 4px;
-        }
-
-        h1 span {
-            color: #f0a500;
-        }
-
-        p.subtitle {
-            color: #c3ccf2;
-            margin-bottom: 16px;
-            font-size: 14px;
-        }
-
-        .wrap {
-            position: relative;
-            display: inline-block;
-        }
-
-        canvas {
-            border-radius: 14px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
-            background: #eef1ff;
-            display: block;
-            cursor: crosshair;
-        }
-
-        .hud {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 850px;
-            padding: 10px 0;
-            font-size: 15px;
-            color: #dfe5ff;
-        }
-
-        .hud b {
-            color: #f0a500;
-        }
-
-        .controls {
-            margin-top: 14px;
-            font-size: 13px;
-            color: #aab4cc;
-        }
-
-        .controls kbd {
-            background: rgba(255, 255, 255, 0.12);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 5px;
-            padding: 2px 7px;
-            margin: 0 2px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stack Hero — Defend the Real Stack</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1b2f8a;overflow:hidden;user-select:none;font-family:"Segoe UI",Arial,sans-serif}
+canvas{display:block;width:100vw;height:100vh;cursor:crosshair}
+</style>
 </head>
 <body>
-    <h1>Stack <span>Hero</span></h1>
-    <p class="subtitle">Defend the Real Stack. Don't let it collapse.</p>
+<canvas id="game"></canvas>
+<script>
+var canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
+var W=window.innerWidth,H=window.innerHeight;
+canvas.width=W;canvas.height=H;
 
-    <div class="wrap">
-        <div class="hud">
-            <span>Score: <b id="score">0</b></span>
-            <span>Floors: <b id="floors">8</b></span>
-            <span>Wave: <b id="wave">1</b></span>
-            <span id="diffLabel" style="color:#f0a500;font-weight:bold">Normal</span>
-        </div>
-        <canvas id="game" width="800" height="600"></canvas>
-    </div>
+window.addEventListener("resize",function(){
+  W=window.innerWidth;H=window.innerHeight;
+  canvas.width=W;canvas.height=H;
+  floorX=W/2-FLOOR_W/2;floorBaseY=H-90;
+});
 
-    <div class="controls">
-        <kbd>A</kbd><kbd>D</kbd> / <kbd>&larr;</kbd><kbd>&rarr;</kbd> Move &nbsp;•&nbsp;
-        <kbd>Mouse</kbd> Aim &nbsp;•&nbsp; <kbd>Click</kbd> Shoot &nbsp;•&nbsp;
-        <kbd>P</kbd> Pause
-    </div>
+var PLAYER_W=44,PLAYER_H=54,PLAYER_SPEED=5.5;
+var FLOOR_W=150,FLOOR_H=16;
 
-    <script>
-        const canvas = document.getElementById('game');
-        const ctx = canvas.getContext('2d');
-        const scoreEl = document.getElementById('score');
-        const floorsEl = document.getElementById('floors');
-        const waveEl = document.getElementById('wave');
-        const diffLabel = document.getElementById('diffLabel');
+var state="start",difficulty="normal";
+var score=0,wave=1;
+var hero={x:W/2-PLAYER_W/2,y:H-120};
+var mouse={x:W/2,y:H/2};
+var bullets=[],enemies=[],spawnTimer=0;
+var floors=[];
+var floorX=W/2-FLOOR_W/2,floorBaseY=H-90;
 
-        const W = canvas.width;
-        const H = canvas.height;
+var diffBtns=[
+  {label:"Easy",x:W/2-155,y:H/2+75,w:90,h:36,diff:"easy"},
+  {label:"Normal",x:W/2-45,y:H/2+75,w:90,h:36,diff:"normal"},
+  {label:"Hard",x:W/2+65,y:H/2+75,w:90,h:36,diff:"hard"}
+];
 
-        const PLAYER_W = 44;
-        const PLAYER_H = 54;
-        const PLAYER_SPEED = 5.5;
+function getDiffSettings(){
+  if(difficulty==="easy")return{startFloors:10,spawnRate:110,enemySpdMul:0.7,scoreMult:0.8,fireRate:12};
+  if(difficulty==="hard")return{startFloors:6,spawnRate:55,enemySpdMul:1.5,scoreMult:1.5,fireRate:18};
+  return{startFloors:8,spawnRate:90,enemySpdMul:1.0,scoreMult:1.0,fireRate:14};
+}
 
-        let state = 'start'; // start | playing | over | paused
-        let difficulty = 'normal';
-        let score = 0;
-        let wave = 1;
-        let hero = { x: W / 2 - PLAYER_W / 2, y: H - 120 };
-        let mouse = { x: W / 2, y: H / 2 };
-        let bullets = [];
-        let enemies = [];
-        let spawnTimer = 0;
+function resetFloors(){
+  floors=[];
+  var n=getDiffSettings().startFloors;
+  for(var i=0;i<n;i++)floors.push({x:floorX,y:floorBaseY-i*30});
+}
 
-        const FLOOR_W = 150;
-        const FLOOR_H = 16;
-        let floors = [];
-        let floorX = W / 2 - FLOOR_W / 2;
-        let floorBaseY = H - 90;
+function startGame(){
+  score=0;wave=1;bullets=[];enemies=[];spawnTimer=0;
+  hero={x:W/2-PLAYER_W/2,y:H-120};
+  resetFloors();state="playing";
+}
 
-        const diffBtns = [
-            { label: 'Easy', x: W / 2 - 155, y: H / 2 + 75, w: 90, h: 36, diff: 'easy' },
-            { label: 'Normal', x: W / 2 - 45, y: H / 2 + 75, w: 90, h: 36, diff: 'normal' },
-            { label: 'Hard', x: W / 2 + 65, y: H / 2 + 75, w: 90, h: 36, diff: 'hard' }
-        ];
+function spawnEnemy(){
+  var ds=getDiffSettings();
+  var side=Math.random()<0.5?-1:1;
+  var speed=(0.7+wave*0.18+Math.random()*0.6)*ds.enemySpdMul;
+  var type=Math.random()<0.25+wave*0.02?"tank":"creep";
+  enemies.push({
+    x:W/2+side*(200+Math.random()*250),y:40,
+    vx:-side*speed,vy:(0.9+wave*0.08)*ds.enemySpdMul,
+    hp:type==="tank"?3:1,r:type==="tank"?22:14,type:type
+  });
+}
 
-        function getDiffSettings() {
-            if (difficulty === 'easy') return { startFloors: 10, spawnRate: 110, enemySpdMul: 0.7, enemyHpMul: 1, scoreMult: 0.8, fireRate: 12 };
-            if (difficulty === 'hard') return { startFloors: 6, spawnRate: 55, enemySpdMul: 1.5, enemyHpMul: 1, scoreMult: 1.5, fireRate: 18 };
-            return { startFloors: 8, spawnRate: 90, enemySpdMul: 1.0, enemyHpMul: 1, scoreMult: 1.0, fireRate: 14 };
-        }
+var keyState={},shooting=false,fireTimer=0;
 
-        function resetFloors() {
-            floors = [];
-            var n = getDiffSettings().startFloors;
-            for (let i = 0; i < n; i++) {
-                floors.push({ x: floorX, y: floorBaseY - i * 30 });
-            }
-        }
+document.addEventListener("keydown",function(e){
+  keyState[e.key.toLowerCase()]=true;
+  if(e.key==="Enter"&&(state==="start"||state==="over"))startGame();
+  if(e.key.toLowerCase()==="p"){
+    if(state==="playing")state="paused";
+    else if(state==="paused")state="playing";
+  }
+  e.preventDefault();
+});
+document.addEventListener("keyup",function(e){keyState[e.key.toLowerCase()]=false;});
 
-        function startGame() {
-            score = 0;
-            wave = 1;
-            bullets = [];
-            enemies = [];
-            spawnTimer = 0;
-            hero = { x: W / 2 - PLAYER_W / 2, y: H - 120 };
-            diffLabel.textContent = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
-            resetFloors();
-            state = 'playing';
-            updateHud();
-        }
+canvas.addEventListener("mousemove",function(e){
+  var rect=canvas.getBoundingClientRect();
+  mouse.x=(e.clientX-rect.left)*(W/rect.width);
+  mouse.y=(e.clientY-rect.top)*(H/rect.height);
+});
 
-        function updateHud() {
-            scoreEl.textContent = score;
-            floorsEl.textContent = floors.length;
-            waveEl.textContent = wave;
-        }
+canvas.addEventListener("mousedown",function(e){
+  W=window.innerWidth;H=window.innerHeight;
+  floorX=W/2-FLOOR_W/2;floorBaseY=H-90;
+  diffBtns=[
+    {label:"Easy",x:W/2-155,y:H/2+75,w:90,h:36,diff:"easy"},
+    {label:"Normal",x:W/2-45,y:H/2+75,w:90,h:36,diff:"normal"},
+    {label:"Hard",x:W/2+65,y:H/2+75,w:90,h:36,diff:"hard"}
+  ];
+  if(state==="start"){
+    var rect2=canvas.getBoundingClientRect();
+    var mx=(e.clientX-rect2.left)*(W/rect2.width);
+    var my=(e.clientY-rect2.top)*(H/rect2.height);
+    for(var i=0;i<diffBtns.length;i++){
+      var b=diffBtns[i];
+      if(mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h){difficulty=b.diff;return;}
+    }
+    startGame();
+  }else if(state==="over"){startGame();}
+  else{shooting=true;}
+});
+window.addEventListener("mouseup",function(){shooting=false;});
 
-        function spawnEnemy() {
-            const ds = getDiffSettings();
-            const side = Math.random() < 0.5 ? -1 : 1;
-            const speed = (0.7 + wave * 0.18 + Math.random() * 0.6) * ds.enemySpdMul;
-            const type = Math.random() < 0.25 + wave * 0.02 ? 'tank' : 'creep';
-            enemies.push({
-                x: W / 2 + side * (200 + Math.random() * 250),
-                y: 40,
-                vx: -side * speed,
-                vy: (0.9 + wave * 0.08) * ds.enemySpdMul,
-                hp: type === 'tank' ? 3 : 1,
-                r: type === 'tank' ? 22 : 14,
-                type: type
-            });
-        }
+function update(){
+  var dx=0;
+  if(keyState["a"]||keyState["arrowleft"])dx-=1;
+  if(keyState["d"]||keyState["arrowright"])dx+=1;
+  hero.x+=dx*PLAYER_SPEED;
+  hero.x=Math.max(10,Math.min(W-PLAYER_W-10,hero.x));
 
-        function update() {
-            // move hero
-            const keys = keyState;
-            let dx = 0;
-            if (keys['a'] || keys['arrowleft']) dx -= 1;
-            if (keys['d'] || keys['arrowright']) dx += 1;
-            hero.x += dx * PLAYER_SPEED;
-            hero.x = Math.max(10, Math.min(W - PLAYER_W - 10, hero.x));
+  for(var i=bullets.length-1;i>=0;i--){
+    var b=bullets[i];
+    b.x+=b.vx;b.y+=b.vy;b.life--;
+    if(b.life<=0||b.x<-20||b.x>W+20||b.y<-20||b.y>H+20){bullets.splice(i,1);continue;}
+    var hit=false;
+    for(var j=enemies.length-1;j>=0;j--){
+      var e=enemies[j];
+      if(Math.hypot(b.x-e.x,b.y-e.y)<e.r+5){
+        e.hp--;
+        if(e.hp<=0){enemies.splice(j,1);score+=Math.floor((e.type==="tank"?30:10)*getDiffSettings().scoreMult);}
+        hit=true;break;
+      }
+    }
+    if(hit)bullets.splice(i,1);
+  }
 
-            // bullets
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                const b = bullets[i];
-                b.x += b.vx;
-                b.y += b.vy;
-                b.life--;
-                if (b.life <= 0 || b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20) {
-                    bullets.splice(i, 1);
-                    continue;
-                }
-                // hit enemies
-                let hit = false;
-                for (let j = enemies.length - 1; j >= 0; j--) {
-                    const e = enemies[j];
-                    const d = Math.hypot(b.x - e.x, b.y - e.y);
-                    if (d < e.r + 5) {
-                        e.hp--;
-                        if (e.hp <= 0) {
-                            enemies.splice(j, 1);
-                            score += Math.floor((e.type === 'tank' ? 30 : 10) * getDiffSettings().scoreMult);
-                        }
-                        hit = true;
-                        break;
-                    }
-                }
-                if (hit) bullets.splice(i, 1);
-            }
+  var spawnRate=Math.max(30,getDiffSettings().spawnRate-wave*6);
+  spawnTimer++;
+  if(spawnTimer>=spawnRate){spawnTimer=0;spawnEnemy();}
 
-            // spawn
-            const spawnRate = Math.max(30, getDiffSettings().spawnRate - wave * 6);
-            spawnTimer++;
-            if (spawnTimer >= spawnRate) {
-                spawnTimer = 0;
-                spawnEnemy();
-            }
+  for(var i=enemies.length-1;i>=0;i--){
+    var e=enemies[i];
+    e.x+=e.vx;e.y+=e.vy;e.vx*=0.995;
+    if(Math.hypot(e.x-(hero.x+PLAYER_W/2),e.y-(hero.y+PLAYER_H/2))<e.r+PLAYER_W/2){
+      e.vx=e.x<hero.x+PLAYER_W/2?-3:3;
+    }
+    var removed=false;
+    for(var f=floors.length-1;f>=0;f--){
+      var fl=floors[f];
+      if(e.y+e.r>fl.y&&e.y-e.r<fl.y+FLOOR_H&&e.x+e.r>fl.x&&e.x-e.r<fl.x+FLOOR_W){
+        floors.splice(f,1);enemies.splice(i,1);removed=true;break;
+      }
+    }
+    if(removed)continue;
+    if(e.y>H-e.r){enemies.splice(i,1);if(floors.length>0)floors.shift();}
+  }
 
-            // enemies
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                const e = enemies[i];
-                e.x += e.vx;
-                e.y += e.vy;
-                e.vx *= 0.995;
+  if(enemies.length===0&&spawnTimer>60&&floors.length>0){
+    wave++;spawnTimer=0;
+    for(var i=0;i<wave;i++)spawnEnemy();
+  }
+  if(floors.length===0)state="over";
+}
 
-                // collision with hero
-                const hd = Math.hypot(
-                    e.x - (hero.x + PLAYER_W / 2),
-                    e.y - (hero.y + PLAYER_H / 2)
-                );
-                if (hd < e.r + PLAYER_W / 2) {
-                    e.vx = e.x < hero.x + PLAYER_W / 2 ? -3 : 3;
-                }
+function draw(){
+  W=window.innerWidth;H=window.innerHeight;
+  canvas.width=W;canvas.height=H;
+  floorX=W/2-FLOOR_W/2;floorBaseY=H-90;
+  hero.y=H-120;
+  diffBtns=[
+    {label:"Easy",x:W/2-155,y:H/2+75,w:90,h:36,diff:"easy"},
+    {label:"Normal",x:W/2-45,y:H/2+75,w:90,h:36,diff:"normal"},
+    {label:"Hard",x:W/2+65,y:H/2+75,w:90,h:36,diff:"hard"}
+  ];
 
-                // damage floors
-                let removed = false;
-                for (let f = floors.length - 1; f >= 0; f--) {
-                    const fl = floors[f];
-                    if (
-                        e.y + e.r > fl.y &&
-                        e.y - e.r < fl.y + FLOOR_H &&
-                        e.x + e.r > fl.x &&
-                        e.x - e.r < fl.x + FLOOR_W
-                    ) {
-                        floors.splice(f, 1);
-                        enemies.splice(i, 1);
-                        removed = true;
-                        break;
-                    }
-                }
-                if (removed) continue;
+  var sky=ctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#2b4bd8');sky.addColorStop(1,'#eef1ff');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
 
-                // reached ground
-                if (e.y > H - e.r) {
-                    enemies.splice(i, 1);
-                    if (floors.length > 0) floors.shift();
-                }
-            }
+  ctx.fillStyle='rgba(255,255,255,0.35)';
+  for(var i=0;i<40;i++){ctx.fillRect((i*137.5)%W,(i*61.7)%(H/2),2,2);}
 
-            // wave progression
-            const remaining = enemies.length;
-            if (remaining === 0 && spawnTimer > 60 && floors.length > 0) {
-                wave++;
-                spawnTimer = 0;
-                for (let i = 0; i < wave; i++) spawnEnemy();
-            }
+  ctx.fillStyle='#1f2a44';ctx.fillRect(0,H-40,W,40);
 
-            if (floors.length === 0) {
-                state = 'over';
-            }
+  floors.forEach(function(fl,i){
+    ctx.fillStyle=i%2===0?'#2b4bd8':'#3d5af0';
+    ctx.fillRect(fl.x,fl.y,FLOOR_W,FLOOR_H);
+    ctx.fillStyle='#f0a500';ctx.fillRect(fl.x+6,fl.y+3,12,FLOOR_H-6);
+  });
+  ctx.fillStyle='#1b2f8a';ctx.fillRect(floorX+10,floorBaseY+16,FLOOR_W-20,24);
 
-            updateHud();
-        }
+  var hx=hero.x,hy=hero.y;
+  ctx.fillStyle='#f0a500';ctx.beginPath();
+  ctx.moveTo(hx+PLAYER_W,hy+6);ctx.lineTo(hx+PLAYER_W+16,hy+PLAYER_H);ctx.lineTo(hx+PLAYER_W-6,hy+PLAYER_H);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='#2b4bd8';ctx.fillRect(hx+4,hy+10,PLAYER_W-8,PLAYER_H-14);
+  ctx.fillStyle='#f5d7a8';ctx.beginPath();ctx.arc(hx+PLAYER_W/2,hy+8,11,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#1f2a44';ctx.fillRect(hx+PLAYER_W/2-10,hy+5,20,5);
+  ctx.fillStyle='#f0a500';ctx.fillRect(hx+4,hy+PLAYER_H-18,PLAYER_W-8,5);
 
-        function draw() {
-            ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle='rgba(240,165,0,0.5)';ctx.lineWidth=2;ctx.setLineDash([6,6]);
+  ctx.beginPath();ctx.moveTo(hx+PLAYER_W/2,hy+PLAYER_H/2);ctx.lineTo(mouse.x,mouse.y);ctx.stroke();
+  ctx.setLineDash([]);
 
-            // sky
-            const sky = ctx.createLinearGradient(0, 0, 0, H);
-            sky.addColorStop(0, '#2b4bd8');
-            sky.addColorStop(1, '#eef1ff');
-            ctx.fillStyle = sky;
-            ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle='#f0a500';
+  bullets.forEach(function(b){ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill();});
 
-            // stars
-            ctx.fillStyle = 'rgba(255,255,255,0.35)';
-            for (let i = 0; i < 40; i++) {
-                const sx = (i * 137.5) % W;
-                const sy = (i * 61.7) % (H / 2);
-                ctx.fillRect(sx, sy, 2, 2);
-            }
+  enemies.forEach(function(e){
+    ctx.fillStyle=e.type==='tank'?'#a83232':'#7a1fa8';
+    ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ffffff';ctx.beginPath();
+    ctx.arc(e.x-e.r/2,e.y-4,4,0,Math.PI*2);ctx.arc(e.x+e.r/2,e.y-4,4,0,Math.PI*2);ctx.fill();
+    if(e.type==='tank'){
+      ctx.fillStyle='#1f2a44';ctx.fillRect(e.x-e.r,e.y-e.r-10,e.r*2,5);
+      ctx.fillStyle='#4ade80';ctx.fillRect(e.x-e.r,e.y-e.r-10,(e.r*2)*e.hp/3,5);
+    }
+  });
 
-            // ground
-            ctx.fillStyle = '#1f2a44';
-            ctx.fillRect(0, H - 40, W, 40);
+  ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(10,10,300,30);
+  ctx.fillStyle='#fff';ctx.font="bold 14px 'Segoe UI'";ctx.textAlign='left';
+  ctx.fillText("Score: "+score+"  Floors: "+floors.length+"  Wave: "+wave+"  ["+difficulty.toUpperCase()+"]",20,30);
 
-            // stack floors
-            floors.forEach((fl, i) => {
-                ctx.fillStyle = i % 2 === 0 ? '#2b4bd8' : '#3d5af0';
-                ctx.fillRect(fl.x, fl.y, FLOOR_W, FLOOR_H);
-                ctx.fillStyle = '#f0a500';
-                ctx.fillRect(fl.x + 6, fl.y + 3, 12, FLOOR_H - 6);
-            });
-            // stack base
-            ctx.fillStyle = '#1b2f8a';
-            ctx.fillRect(floorX + 10, floorBaseY + 16, FLOOR_W - 20, 24);
+  if(state==="start"){
+    ctx.fillStyle='rgba(20,32,92,0.82)';ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center';
+    ctx.fillStyle='#f0a500';ctx.font='bold 44px "Segoe UI",Arial';
+    ctx.fillText('STACK HERO',W/2,H/2-50);
+    ctx.fillStyle='#dfe5ff';ctx.font='17px "Segoe UI",Arial';
+    ctx.fillText('Defend the Real Stack!',W/2,H/2);
+    ctx.fillText('Move with A/D • Aim with mouse • Click to shoot',W/2,H/2+28);
+    ctx.fillStyle='#fff';ctx.font='bold 14px "Segoe UI",Arial';
+    ctx.fillText('SELECT DIFFICULTY:',W/2,H/2+65);
+    for(var i=0;i<diffBtns.length;i++){
+      var b=diffBtns[i];
+      ctx.fillStyle=difficulty===b.diff?'#f0a500':'#334';
+      ctx.fillRect(b.x,b.y,b.w,b.h);
+      ctx.fillStyle=difficulty===b.diff?'#1b2f8a':'#aab';
+      ctx.font='bold 15px "Segoe UI",Arial';ctx.fillText(b.label,b.x+b.w/2,b.y+24);
+    }
+    ctx.fillStyle='#ffe98a';ctx.font='15px "Segoe UI",Arial';
+    ctx.fillText('Pick difficulty then press Enter or click',W/2,H/2+135);
+  }else if(state==="paused"){
+    ctx.fillStyle='rgba(20,32,92,0.82)';ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center';ctx.fillStyle='#f0a500';ctx.font='bold 44px "Segoe UI",Arial';
+    ctx.fillText('PAUSED',W/2,H/2-10);
+    ctx.fillStyle='#dfe5ff';ctx.font='17px "Segoe UI",Arial';ctx.fillText('Press P to resume.',W/2,H/2+25);
+  }else if(state==="over"){
+    ctx.fillStyle='rgba(20,32,92,0.82)';ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center';ctx.fillStyle='#f0a500';ctx.font='bold 44px "Segoe UI",Arial';
+    ctx.fillText('THE STACK HAS FALLEN',W/2,H/2-30);
+    ctx.fillStyle='#dfe5ff';ctx.font='17px "Segoe UI",Arial';
+    ctx.fillText('Score: '+score+'  |  Waves: '+(wave-1)+'  |  '+difficulty.toUpperCase(),W/2,H/2+15);
+    ctx.fillText('Press Enter to try again.',W/2,H/2+45);
+  }
 
-            // hero
-            const hx = hero.x;
-            const hy = hero.y;
-            // cape
-            ctx.fillStyle = '#f0a500';
-            ctx.beginPath();
-            ctx.moveTo(hx + PLAYER_W, hy + 6);
-            ctx.lineTo(hx + PLAYER_W + 16, hy + PLAYER_H);
-            ctx.lineTo(hx + PLAYER_W - 6, hy + PLAYER_H);
-            ctx.closePath();
-            ctx.fill();
-            // body
-            ctx.fillStyle = '#2b4bd8';
-            ctx.fillRect(hx + 4, hy + 10, PLAYER_W - 8, PLAYER_H - 14);
-            // head
-            ctx.fillStyle = '#f5d7a8';
-            ctx.beginPath();
-            ctx.arc(hx + PLAYER_W / 2, hy + 8, 11, 0, Math.PI * 2);
-            ctx.fill();
-            // mask
-            ctx.fillStyle = '#1f2a44';
-            ctx.fillRect(hx + PLAYER_W / 2 - 10, hy + 5, 20, 5);
-            // belt
-            ctx.fillStyle = '#f0a500';
-            ctx.fillRect(hx + 4, hy + PLAYER_H - 18, PLAYER_W - 8, 5);
+  requestAnimationFrame(draw);
+}
 
-            // aim line
-            ctx.strokeStyle = 'rgba(240,165,0,0.5)';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([6, 6]);
-            ctx.beginPath();
-            ctx.moveTo(hx + PLAYER_W / 2, hy + PLAYER_H / 2);
-            ctx.lineTo(mouse.x, mouse.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // bullets
-            ctx.fillStyle = '#f0a500';
-            bullets.forEach(b => {
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            // enemies
-            enemies.forEach(e => {
-                const c = e.type === 'tank' ? '#a83232' : '#7a1fa8';
-                ctx.fillStyle = c;
-                ctx.beginPath();
-                ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
-                ctx.fill();
-                // eyes
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.arc(e.x - e.r / 2, e.y - 4, 4, 0, Math.PI * 2);
-                ctx.arc(e.x + e.r / 2, e.y - 4, 4, 0, Math.PI * 2);
-                ctx.fill();
-                // hp
-                if (e.type === 'tank') {
-                    ctx.fillStyle = '#1f2a44';
-                    ctx.fillRect(e.x - e.r, e.y - e.r - 10, e.r * 2, 5);
-                    ctx.fillStyle = '#4ade80';
-                    ctx.fillRect(e.x - e.r, e.y - e.r - 10, (e.r * 2) * e.hp / 3, 5);
-                }
-            });
-
-            // overlays
-            if (state === 'start') {
-                ctx.fillStyle = 'rgba(20,32,92,0.82)';
-                ctx.fillRect(0, 0, W, H);
-                ctx.textAlign = 'center';
-                ctx.fillStyle = '#f0a500';
-                ctx.font = 'bold 44px "Segoe UI", Arial';
-                ctx.fillText('STACK HERO', W / 2, H / 2 - 50);
-                ctx.fillStyle = '#dfe5ff';
-                ctx.font = '17px "Segoe UI", Arial';
-                ctx.fillText('Defend the Real Stack!', W / 2, H / 2);
-                ctx.fillText('Move with A/D • Aim with mouse • Click to shoot', W / 2, H / 2 + 28);
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 14px "Segoe UI", Arial';
-                ctx.fillText('SELECT DIFFICULTY:', W / 2, H / 2 + 65);
-                for (var i = 0; i < diffBtns.length; i++) {
-                    var b = diffBtns[i];
-                    ctx.fillStyle = difficulty === b.diff ? '#f0a500' : '#334';
-                    ctx.fillRect(b.x, b.y, b.w, b.h);
-                    ctx.fillStyle = difficulty === b.diff ? '#1b2f8a' : '#aab';
-                    ctx.font = 'bold 15px "Segoe UI", Arial';
-                    ctx.fillText(b.label, b.x + b.w / 2, b.y + 24);
-                }
-                ctx.fillStyle = '#ffe98a';
-                ctx.font = '15px "Segoe UI", Arial';
-                ctx.fillText('Pick difficulty then press Enter or click', W / 2, H / 2 + 135);
-            } else if (state === 'paused') {
-                drawOverlay('PAUSED', 'Press P to resume.');
-            } else if (state === 'over') {
-                drawOverlay('THE STACK HAS FALLEN', 'Final Score: ' + score + '   |   Waves: ' + (wave - 1) + '   |   ' + difficulty.toUpperCase() + '\nPress Enter to try again.');
-            }
-        }
-
-        function drawOverlay(title, body) {
-            ctx.fillStyle = 'rgba(20,32,92,0.82)';
-            ctx.fillRect(0, 0, W, H);
-            ctx.textAlign = 'center';
-            ctx.fillStyle = '#f0a500';
-            ctx.font = 'bold 44px "Segoe UI", Arial';
-            ctx.fillText(title, W / 2, H / 2 - 40);
-            ctx.fillStyle = '#dfe5ff';
-            ctx.font = '17px "Segoe UI", Arial';
-            const lines = body.split('\n');
-            lines.forEach((line, i) => {
-                ctx.fillText(line, W / 2, H / 2 + 10 + i * 28);
-            });
-        }
-
-        const keyState = {};
-        let shooting = false;
-        let fireTimer = 0;
-        let pausedTimer = 0;
-
-        document.addEventListener('keydown', (e) => {
-            keyState[e.key.toLowerCase()] = true;
-            if (e.key === 'Enter') {
-                if (state === 'start' || state === 'over') startGame();
-            }
-            if (e.key.toLowerCase() === 'p') {
-                if (state === 'playing') { state = 'paused'; }
-                else if (state === 'paused') { state = 'playing'; }
-            }
-        });
-
-        document.addEventListener('keyup', (e) => {
-            keyState[e.key.toLowerCase()] = false;
-        });
-
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            mouse.x = e.clientX - rect.left;
-            mouse.y = e.clientY - rect.top;
-        });
-
-        canvas.addEventListener('mousedown', (e) => {
-            if (state === 'start') {
-                const rect = canvas.getBoundingClientRect();
-                const mx = (e.clientX - rect.left) * (W / rect.width);
-                const my = (e.clientY - rect.top) * (H / rect.height);
-                for (var i = 0; i < diffBtns.length; i++) {
-                    var b = diffBtns[i];
-                    if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
-                        difficulty = b.diff;
-                        return;
-                    }
-                }
-                startGame();
-            } else if (state === 'over') {
-                startGame();
-            } else {
-                shooting = true;
-            }
-        });
-        window.addEventListener('mouseup', () => { shooting = false; });
-
-        function gameLoop() {
-            if (state === 'playing') {
-                fireTimer++;
-                if (shooting && fireTimer > getDiffSettings().fireRate) {
-                    fireTimer = 0;
-                    const hx = hero.x + PLAYER_W / 2;
-                    const hy = hero.y + PLAYER_H / 2;
-                    const ang = Math.atan2(mouse.y - hy, mouse.x - hx);
-                    bullets.push({
-                        x: hx, y: hy,
-                        vx: Math.cos(ang) * 9,
-                        vy: Math.sin(ang) * 9,
-                        life: 90
-                    });
-                }
-                update();
-            }
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
-        gameLoop();
-    </script>
+function gameLoop(){
+  if(state==="playing"){
+    fireTimer++;
+    if(shooting&&fireTimer>getDiffSettings().fireRate){
+      fireTimer=0;
+      var hx=hero.x+PLAYER_W/2,hy=hero.y+PLAYER_H/2;
+      var ang=Math.atan2(mouse.y-hy,mouse.x-hx);
+      bullets.push({x:hx,y:hy,vx:Math.cos(ang)*9,vy:Math.sin(ang)*9,life:90});
+    }
+    update();
+  }
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+gameLoop();
+</script>
 </body>
 </html>
