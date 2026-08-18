@@ -6,18 +6,27 @@
 <title>M.r Racer — Lagos Straight Road</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:"Segoe UI",Arial,sans-serif;background:#1a1a2e;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;user-select:none}
-canvas{border-radius:12px;box-shadow:0 0 40px rgba(0,0,0,0.5)}
+body{background:#1a1a2e;overflow:hidden;user-select:none;font-family:"Segoe UI",Arial,sans-serif}
+canvas{display:block;width:100vw;height:100vh}
 </style>
 </head>
 <body>
-<canvas id="g" width="800" height="600"></canvas>
+<canvas id="g"></canvas>
 <script>
-var c=document.getElementById("g"),g=c.getContext("2d"),W=800,H=600;
+var c=document.getElementById("g"),g=c.getContext("2d");
+var W=window.innerWidth,H=window.innerHeight;
+c.width=W;c.height=H;
+
+window.addEventListener("resize",function(){
+  W=window.innerWidth;H=window.innerHeight;
+  c.width=W;c.height=H;
+});
+
 var state="menu",score=0,bestTime=999;
 var difficulty="normal";
 
-var roadX=250,roadW=300;
+var roadW=Math.min(300,W*0.35);
+var roadX=(W-roadW)/2;
 var totalLen=8000;
 
 var diffBtns=[
@@ -77,6 +86,7 @@ function startRace(){
   var ds=getDiffSettings();
   tTotal=ds.time*60;
   genCP();genBldgs();cpIdx=0;
+  roadW=Math.min(300,W*0.35);roadX=(W-roadW)/2;
   car.x=roadX+roadW/2-15;car.y=0;car.spd=0;
   tLeft=tTotal;score=0;tCars=[];
   for(var i=0;i<ds.maxTraffic;i++)spawnT();
@@ -133,18 +143,25 @@ function update(){
   }
   if(Math.random()<ds.spawnRate)spawnT();
 
-  var cpY=cps[cpIdx].y;
-  if(car.y>=cpY){cpIdx++;if(cpIdx>=cps.length){finishRace();return;}}
+  if(car.y>=cps[cpIdx].y){cpIdx++;if(cpIdx>=cps.length){finishRace();return;}}
 }
 
 function draw(){
-  g.clearRect(0,0,W,H);
+  W=window.innerWidth;H=window.innerHeight;
+  c.width=W;c.height=H;
+  roadW=Math.min(300,W*0.35);roadX=(W-roadW)/2;
+  diffBtns=[
+    {label:"Easy",x:W/2-170,y:H/2+60,w:100,h:40,diff:"easy"},
+    {label:"Normal",x:W/2-50,y:H/2+60,w:100,h:40,diff:"normal"},
+    {label:"Hard",x:W/2+70,y:H/2+60,w:100,h:40,diff:"hard"}
+  ];
+
   if(state==="menu"){
     g.fillStyle="#1a1a2e";g.fillRect(0,0,W,H);
-    g.textAlign="center";g.fillStyle="#f0a500";g.font="bold 52px 'Segoe UI'";
+    g.textAlign="center";g.fillStyle="#f0a500";g.font="bold "+Math.min(52,W*0.06)+"px 'Segoe UI'";
     g.fillText("M.R RACER",W/2,H/2-80);
-    g.fillStyle="#fff";g.font="22px 'Segoe UI'";g.fillText("LAGOS STRAIGHT ROAD",W/2,H/2-40);
-    g.font="15px 'Segoe UI'";g.fillStyle="#aab";
+    g.fillStyle="#fff";g.font=Math.min(22,W*0.028)+"px 'Segoe UI'";g.fillText("LAGOS STRAIGHT ROAD",W/2,H/2-40);
+    g.font=Math.min(15,W*0.02)+"px 'Segoe UI'";g.fillStyle="#aab";
     g.fillText("Race through Lagos, hit 5 checkpoints",W/2,H/2+5);
     g.fillText("W or Up = drive forward",W/2,H/2+25);
     g.fillText("S or Down = brake",W/2,H/2+45);
@@ -156,7 +173,8 @@ function draw(){
       g.fillRect(b.x,b.y,b.w,b.h);
       g.fillStyle=difficulty===b.diff?"#1a1a2e":"#fff";g.font="bold 16px 'Segoe UI'";g.fillText(b.label,b.x+b.w/2,b.y+26);
     }
-    g.fillStyle="#ffe98a";g.font="15px 'Segoe UI'";g.fillText("Pick difficulty then click to start",W/2,H/2+150);return;
+    g.fillStyle="#ffe98a";g.font="15px 'Segoe UI'";g.fillText("Pick difficulty then click to start",W/2,H/2+150);
+    requestAnimationFrame(draw);return;
   }
 
   if(state==="play")update();
@@ -259,10 +277,10 @@ function draw(){
     g.fillStyle="#ffe98a";g.font="bold 18px 'Segoe UI'";
     g.fillText("Click or Enter to try again",W/2,H/2+60);
   }
-}
 
-function loop(){draw();requestAnimationFrame(loop);}
-loop();
+  requestAnimationFrame(draw);
+}
+draw();
 </script>
 </body>
 </html>
