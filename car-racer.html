@@ -33,14 +33,50 @@ function getDiffSettings(){
 }
 
 var roads=[];
-for(var i=0;i<=MW;i+=350)roads.push({x:i-45,y:0,w:90,h:MH,d:"v"});
-for(var j=0;j<=MH;j+=350)roads.push({x:0,y:j-45,w:MW,h:90,d:"h"});
+var mainRoads=[];
+// Main horizontal roads
+roads.push({x:0,y:400,w:MW,h:100,d:"h"});
+roads.push({x:0,y:1400,w:MW,h:100,d:"h"});
+roads.push({x:0,y:2400,w:MW,h:100,d:"h"});
+// Main vertical roads
+roads.push({x:400,y:0,w:100,h:MH,d:"v"});
+roads.push({x:1400,y:0,w:100,h:MH,d:"v"});
+roads.push({x:2400,y:0,w:100,h:MH,d:"v"});
+// Side streets horizontal
+roads.push({x:0,y:900,w:700,h:60,d:"h"});
+roads.push({x:900,y:900,w:1000,h:60,d:"h"});
+roads.push({x:2100,y:900,w:700,h:60,d:"h"});
+roads.push({x:0,y:1900,w:500,h:60,d:"h"});
+roads.push({x:700,y:1900,w:600,h:60,d:"h"});
+roads.push({x:1500,y:1900,w:500,h:60,d:"h"});
+roads.push({x:2200,y:1900,w:600,h:60,d:"h"});
+// Side streets vertical
+roads.push({x:900,y:0,w:60,h:600,d:"v"});
+roads.push({x:1900,y:0,w:60,h:500,d:"v"});
+roads.push({x:900,y:700,w:60,h:600,d:"v"});
+roads.push({x:1900,y:1000,w:60,h:500,d:"v"});
+roads.push({x:700,y:1500,w:60,h:500,d:"v"});
+roads.push({x:1700,y:1500,w:60,h:500,d:"v"});
+roads.push({x:2200,y:2000,w:60,h:500,d:"v"});
+mainRoads=roads;
 
 var bldgs=[];
-for(var bx=0;bx<MW;bx+=350)for(var by=0;by<MH;by+=350){
-  if(Math.random()<0.6){
-    var bw=60+Math.random()*180,bh=60+Math.random()*180;
-    bldgs.push({x:bx+80+Math.random()*(180-bw/2),y:by+80+Math.random()*(180-bh/2),w:bw,h:bh,
+var zones=[
+  {x1:50,y1:50,x2:380,y2:380},{x1:510,y1:50,x2:880,y2:380},{x1:1510,y1:50,x2:1880,y2:380},
+  {x1:510,y1:510,x2:880,y2:880},{x1:1010,y1:510,x2:1380,y2:880},{x1:2010,y1:510,x2:2380,y2:880},
+  {x1:50,y1:1010,x2:380,y2:1380},{x1:510,y1:1010,x2:880,y2:1380},{x1:1510,y1:1010,x2:1880,y2:1380},
+  {x1:50,y1:1510,x2:680,y2:1880},{x1:760,y1:1510,x2:1380,y2:1880},{x1:1560,y1:1510,x2:1680,y2:1880},
+  {x1:2010,y1:1510,x2:2180,y2:1880},{x1:2260,y1:1510,x2:2380,y2:1880},
+  {x1:50,y1:2010,x2:680,y2:2380},{x1:760,y1:2010,x2:1680,y2:2380},{x1:1760,y1:2010,x2:2180,y2:2380},
+  {x1:50,y1:2510,x2:380,y2:2750},{x1:510,y1:2510,x2:880,y2:2750},{x1:1510,y1:2510,x2:1880,y2:2750},
+  {x1:2010,y1:2510,x2:2380,y2:2750},{x1:2510,y1:50,x2:2750,y2:380}
+];
+for(var z=0;z<zones.length;z++){
+  var zn=zones[z],zw=zn.x2-zn.x1,zh=zn.y2-zn.y1;
+  for(var bi=0;bi<4+Math.floor(Math.random()*3);bi++){
+    var bw=50+Math.random()*100,bh=50+Math.random()*100;
+    var bx=zn.x1+Math.random()*(zw-bw),by=zn.y1+Math.random()*(zh-bh);
+    bldgs.push({x:bx,y:by,w:bw,h:bh,
     c:["#d4b896","#c9a87c","#b8946a","#e0c9a6","#cbb08e","#8fa3c9"][~~(Math.random()*6)]});
   }
 }
