@@ -23,14 +23,28 @@ canvas{border-radius:12px;box-shadow:0 0 40px rgba(0,0,0,0.6);cursor:crosshair}
 var c=document.getElementById("g"),g=c.getContext("2d"),W=500,H=650;
 
 var state="menu",score=0,lives=3,speed=0,maxSpd=7;
+var difficulty="normal";
 var car={x:W/2-18,y:H-130,w:36,h:60};
 var cops=[],bullets=[],particles=[];
 var roadW=320,roadL=(W-roadW)/2,roadR=roadL+roadW;
 var off=0,flash=0,invince=0;
 var keys={};
 
+var diffBtns=[
+  {label:"Easy",x:W/2-155,y:H/2+65,w:90,h:36,diff:"easy"},
+  {label:"Normal",x:W/2-45,y:H/2+65,w:90,h:36,diff:"normal"},
+  {label:"Hard",x:W/2+65,y:H/2+65,w:90,h:36,diff:"hard"}
+];
+
+function getDiffSettings(){
+  if(difficulty==="easy")return{initLives:5,maxCops:3,copSpdMul:0.7,shootChance:0.01,shootAfter:150,scoreMult:0.8,spawnCap:4};
+  if(difficulty==="hard")return{initLives:2,maxCops:6,copSpdMul:1.4,shootChance:0.04,shootAfter:70,scoreMult:1.5,spawnCap:8};
+  return{initLives:3,maxCops:4,copSpdMul:1.0,shootChance:0.02,shootAfter:120,scoreMult:1.0,spawnCap:6};
+}
+
 function reset(){
-  score=0;lives=3;speed=0;
+  var ds=getDiffSettings();
+  score=0;lives=ds.initLives;speed=0;
   car.x=W/2-18;car.y=H-130;
   cops=[];bullets=[];particles=[];off=0;flash=0;invince=0;
   for(var i=0;i<3;i++)spawnCop(i);
@@ -38,8 +52,9 @@ function reset(){
 }
 
 function spawnCop(delay){
+  var ds=getDiffSettings();
   var lane=roadL+20+Math.random()*(roadW-60);
-  cops.push({x:lane,y:-80-delay*120,w:32,h:50,s:1.5+Math.random()*1.5,shoot:0,dir:Math.random()<.5?-1:1});
+  cops.push({x:lane,y:-80-delay*120,w:32,h:50,s:(1.5+Math.random()*1.5)*ds.copSpdMul,shoot:0,dir:Math.random()<.5?-1:1});
 }
 
 function spawnParticle(x,y,c){
@@ -52,7 +67,17 @@ document.addEventListener("keydown",function(e){
   e.preventDefault();
 });
 document.addEventListener("keyup",function(e){keys[e.key.toLowerCase()]=false;});
-c.addEventListener("click",function(){if(state!=="play")reset();});
+c.addEventListener("click",function(e){
+  if(state==="menu"){
+    var rect=c.getBoundingClientRect();
+    var mx=(e.clientX-rect.left)*(W/rect.width),my=(e.clientY-rect.top)*(H/rect.height);
+    for(var i=0;i<diffBtns.length;i++){
+      var b=diffBtns[i];
+      if(mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h){difficulty=b.diff;return;}
+    }
+    reset();
+  }else if(state!=="play"){reset();}
+});
 
 function update(){
   // Steer
@@ -66,7 +91,7 @@ function update(){
   else speed*=0.98;
 
   off+=speed*2+3;
-  score+=Math.floor(speed+1);
+  score+=Math.floor((speed+1)*getDiffSettings().scoreMult);
   if(invince>0)invince--;
   if(flash>0)flash--;
 
@@ -87,12 +112,13 @@ function update(){
 
     // Shoot
     cp.shoot++;
-    if(cp.shoot>120&&Math.random()<0.02){
+    var ds=getDiffSettings();
+    if(cp.shoot>ds.shootAfter&&Math.random()<ds.shootChance){
       cp.shoot=0;
       bullets.push({x:cp.x+cp.w/2,y:cp.y+cp.h,vy:5,vx:(car.x+car.w/2-cp.x-cp.w/2)*0.02});
     }
   }
-  if(cops.length<3+Math.floor(score/3000))spawnCop(0);
+  if(cops.length<Math.min(getDiffSettings().spawnCap,2+Math.floor(score/3000)))spawnCop(0);
 
   // Bullets
   for(var i=bullets.length-1;i>=0;i--){
@@ -173,8 +199,14 @@ function draw(){
     g.fillText("A/D steer &bull; W accelerate &bull; S brake",W/2,H/2+5);
     g.fillText("Cops will shoot — dodge their bullets!",W/2,H/2+28);
     g.fillText("Survive and score as high as you can",W/2,H/2+51);
-    g.fillStyle="#ffe98a";g.font="bold 20px 'Segoe UI'";
-    g.fillText("Click or Enter to start",W/2,H/2+95);
+    g.fillStyle="#fff";g.font="bold 14px 'Segoe UI'";g.fillText("SELECT DIFFICULTY:",W/2,H/2+88);
+    for(var i=0;i<diffBtns.length;i++){
+      var b=diffBtns[i];
+      g.fillStyle=difficulty===b.diff?"#ff4444":"#334";
+      g.fillRect(b.x,b.y,b.w,b.h);
+      g.fillStyle=difficulty===b.diff?"#fff":"#aab";g.font="bold 15px 'Segoe UI'";g.fillText(b.label,b.x+b.w/2,b.y+24);
+    }
+    g.fillStyle="#ffe98a";g.font="bold 16px 'Segoe UI'";g.fillText("Pick difficulty then click to start",W/2,H/2+135);
     return;
   }
 
@@ -226,7 +258,7 @@ function draw(){
   // HUD
   g.fillStyle="rgba(0,0,0,0.6)";g.fillRect(10,10,200,55);
   g.fillStyle="#fff";g.font="14px 'Segoe UI'";g.textAlign="left";
-  g.fillText("Score: "+score,20,30);
+  g.fillText("Score: "+score+"  ["+difficulty.toUpperCase()+"]",20,30);
   g.fillText("Lives: "+"&#10084;".repeat(lives),20,50);
 
   g.fillStyle="rgba(0,0,0,0.6)";g.fillRect(W-120,10,110,35);
@@ -237,7 +269,7 @@ function draw(){
     g.fillStyle="rgba(20,5,5,0.85)";g.fillRect(0,0,W,H);
     g.textAlign="center";
     g.fillStyle="#ff4444";g.font="bold 48px 'Segoe UI'";
-    g.fillText("BUSTED!",W/2,H/2-40);
+    g.fillText("BUSTED! ["+difficulty.toUpperCase()+"]",W/2,H/2-40);
     g.fillStyle="#fff";g.font="22px 'Segoe UI'";
     g.fillText("Score: "+score,W/2,H/2+5);
     g.fillStyle="#ffe98a";g.font="bold 18px 'Segoe UI'";

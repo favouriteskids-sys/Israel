@@ -54,7 +54,8 @@
         .hud {
             display: flex;
             justify-content: space-between;
-            width: 800px;
+            align-items: center;
+            width: 850px;
             padding: 10px 0;
             font-size: 15px;
             color: #dfe5ff;
@@ -88,6 +89,7 @@
             <span>Score: <b id="score">0</b></span>
             <span>Floors: <b id="floors">8</b></span>
             <span>Wave: <b id="wave">1</b></span>
+            <span id="diffLabel" style="color:#f0a500;font-weight:bold">Normal</span>
         </div>
         <canvas id="game" width="800" height="600"></canvas>
     </div>
@@ -104,6 +106,7 @@
         const scoreEl = document.getElementById('score');
         const floorsEl = document.getElementById('floors');
         const waveEl = document.getElementById('wave');
+        const diffLabel = document.getElementById('diffLabel');
 
         const W = canvas.width;
         const H = canvas.height;
@@ -113,6 +116,7 @@
         const PLAYER_SPEED = 5.5;
 
         let state = 'start'; // start | playing | over | paused
+        let difficulty = 'normal';
         let score = 0;
         let wave = 1;
         let hero = { x: W / 2 - PLAYER_W / 2, y: H - 120 };
@@ -127,9 +131,22 @@
         let floorX = W / 2 - FLOOR_W / 2;
         let floorBaseY = H - 90;
 
+        const diffBtns = [
+            { label: 'Easy', x: W / 2 - 155, y: H / 2 + 75, w: 90, h: 36, diff: 'easy' },
+            { label: 'Normal', x: W / 2 - 45, y: H / 2 + 75, w: 90, h: 36, diff: 'normal' },
+            { label: 'Hard', x: W / 2 + 65, y: H / 2 + 75, w: 90, h: 36, diff: 'hard' }
+        ];
+
+        function getDiffSettings() {
+            if (difficulty === 'easy') return { startFloors: 10, spawnRate: 110, enemySpdMul: 0.7, enemyHpMul: 1, scoreMult: 0.8, fireRate: 12 };
+            if (difficulty === 'hard') return { startFloors: 6, spawnRate: 55, enemySpdMul: 1.5, enemyHpMul: 1, scoreMult: 1.5, fireRate: 18 };
+            return { startFloors: 8, spawnRate: 90, enemySpdMul: 1.0, enemyHpMul: 1, scoreMult: 1.0, fireRate: 14 };
+        }
+
         function resetFloors() {
             floors = [];
-            for (let i = 0; i < 8; i++) {
+            var n = getDiffSettings().startFloors;
+            for (let i = 0; i < n; i++) {
                 floors.push({ x: floorX, y: floorBaseY - i * 30 });
             }
         }
@@ -141,6 +158,7 @@
             enemies = [];
             spawnTimer = 0;
             hero = { x: W / 2 - PLAYER_W / 2, y: H - 120 };
+            diffLabel.textContent = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
             resetFloors();
             state = 'playing';
             updateHud();
@@ -153,14 +171,15 @@
         }
 
         function spawnEnemy() {
+            const ds = getDiffSettings();
             const side = Math.random() < 0.5 ? -1 : 1;
-            const speed = 0.7 + wave * 0.18 + Math.random() * 0.6;
+            const speed = (0.7 + wave * 0.18 + Math.random() * 0.6) * ds.enemySpdMul;
             const type = Math.random() < 0.25 + wave * 0.02 ? 'tank' : 'creep';
             enemies.push({
                 x: W / 2 + side * (200 + Math.random() * 250),
                 y: 40,
                 vx: -side * speed,
-                vy: 0.9 + wave * 0.08,
+                vy: (0.9 + wave * 0.08) * ds.enemySpdMul,
                 hp: type === 'tank' ? 3 : 1,
                 r: type === 'tank' ? 22 : 14,
                 type: type
@@ -195,7 +214,7 @@
                         e.hp--;
                         if (e.hp <= 0) {
                             enemies.splice(j, 1);
-                            score += e.type === 'tank' ? 30 : 10;
+                            score += Math.floor((e.type === 'tank' ? 30 : 10) * getDiffSettings().scoreMult);
                         }
                         hit = true;
                         break;
@@ -205,7 +224,7 @@
             }
 
             // spawn
-            const spawnRate = Math.max(30, 90 - wave * 6);
+            const spawnRate = Math.max(30, getDiffSettings().spawnRate - wave * 6);
             spawnTimer++;
             if (spawnTimer >= spawnRate) {
                 spawnTimer = 0;
@@ -369,11 +388,34 @@
 
             // overlays
             if (state === 'start') {
-                drawOverlay('STACK HERO', 'Defend the Real Stack!\nMove with A/D or arrow keys.\nAim with the mouse, click to shoot.\nPress Enter to start.');
+                ctx.fillStyle = 'rgba(20,32,92,0.82)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#f0a500';
+                ctx.font = 'bold 44px "Segoe UI", Arial';
+                ctx.fillText('STACK HERO', W / 2, H / 2 - 50);
+                ctx.fillStyle = '#dfe5ff';
+                ctx.font = '17px "Segoe UI", Arial';
+                ctx.fillText('Defend the Real Stack!', W / 2, H / 2);
+                ctx.fillText('Move with A/D • Aim with mouse • Click to shoot', W / 2, H / 2 + 28);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px "Segoe UI", Arial';
+                ctx.fillText('SELECT DIFFICULTY:', W / 2, H / 2 + 65);
+                for (var i = 0; i < diffBtns.length; i++) {
+                    var b = diffBtns[i];
+                    ctx.fillStyle = difficulty === b.diff ? '#f0a500' : '#334';
+                    ctx.fillRect(b.x, b.y, b.w, b.h);
+                    ctx.fillStyle = difficulty === b.diff ? '#1b2f8a' : '#aab';
+                    ctx.font = 'bold 15px "Segoe UI", Arial';
+                    ctx.fillText(b.label, b.x + b.w / 2, b.y + 24);
+                }
+                ctx.fillStyle = '#ffe98a';
+                ctx.font = '15px "Segoe UI", Arial';
+                ctx.fillText('Pick difficulty then press Enter or click', W / 2, H / 2 + 135);
             } else if (state === 'paused') {
                 drawOverlay('PAUSED', 'Press P to resume.');
             } else if (state === 'over') {
-                drawOverlay('THE STACK HAS FALLEN', 'Final Score: ' + score + '   |   Waves: ' + (wave - 1) + '\nPress Enter to try again.');
+                drawOverlay('THE STACK HAS FALLEN', 'Final Score: ' + score + '   |   Waves: ' + (wave - 1) + '   |   ' + difficulty.toUpperCase() + '\nPress Enter to try again.');
             }
         }
 
@@ -418,13 +460,31 @@
             mouse.y = e.clientY - rect.top;
         });
 
-        canvas.addEventListener('mousedown', () => { shooting = true; });
+        canvas.addEventListener('mousedown', (e) => {
+            if (state === 'start') {
+                const rect = canvas.getBoundingClientRect();
+                const mx = (e.clientX - rect.left) * (W / rect.width);
+                const my = (e.clientY - rect.top) * (H / rect.height);
+                for (var i = 0; i < diffBtns.length; i++) {
+                    var b = diffBtns[i];
+                    if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+                        difficulty = b.diff;
+                        return;
+                    }
+                }
+                startGame();
+            } else if (state === 'over') {
+                startGame();
+            } else {
+                shooting = true;
+            }
+        });
         window.addEventListener('mouseup', () => { shooting = false; });
 
         function gameLoop() {
             if (state === 'playing') {
                 fireTimer++;
-                if (shooting && fireTimer > 14) {
+                if (shooting && fireTimer > getDiffSettings().fireRate) {
                     fireTimer = 0;
                     const hx = hero.x + PLAYER_W / 2;
                     const hy = hero.y + PLAYER_H / 2;
