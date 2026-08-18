@@ -50,7 +50,7 @@ function genBldgs(){
   }
 }
 
-var car={x:roadX+roadW/2-15,y:H-140,w:30,h:55,a:0,s:0};
+var car={x:roadX+roadW/2-15,y:H-80,w:30,h:55,a:0,s:0};
 var tCars=[];
 function spawnT(){
   var ds=getDiffSettings();
@@ -77,7 +77,7 @@ function startRace(){
   var ds=getDiffSettings();
   tTotal=ds.time*60;scrollSpd=ds.scrollSpd;
   genCP();genBldgs();cpIdx=0;
-  car.x=roadX+roadW/2-15;car.y=H-140;car.s=0;
+  car.x=roadX+roadW/2-15;car.y=H-80;car.s=0;
   scrollY=0;tLeft=tTotal;score=0;tCars=[];
   for(var i=0;i<ds.maxTraffic;i++)spawnT();
   state="play";
@@ -189,7 +189,6 @@ function drawWorld(){
   g.lineTo(car.x+car.w,car.y+car.h-12);g.lineTo(car.x+car.w-3,car.y+car.h);g.lineTo(car.x+3,car.y+car.h);
   g.lineTo(car.x,car.y+car.h-12);g.lineTo(car.x,car.y+14);g.closePath();g.fill();
   g.fillStyle="#0a6b4c";g.fillRect(car.x+5,car.y+18,car.w-10,14);
-  g.fillStyle="#f0a500";g.fillRect(car.x+car.w/2-2,car.y+2,4,car.h-4);
   g.fillStyle="#ffe89c";g.fillRect(car.x+3,car.y+2,7,4);g.fillRect(car.x+car.w-10,car.y+2,7,4);
   g.fillStyle="#ff4444";g.fillRect(car.x+3,car.y+car.h-5,7,4);g.fillRect(car.x+car.w-10,car.y+car.h-5,7,4);
   g.fillStyle="#111";g.fillRect(car.x-2,car.y+8,5,10);g.fillRect(car.x+car.w-3,car.y+8,5,10);
