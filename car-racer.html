@@ -3,315 +3,453 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M.r Racer</title>
+    <title>M.r Racer — Lagos Missions</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: "Segoe UI", Arial, sans-serif;
-            background: linear-gradient(180deg, #5bc0de 0%, #d6a86c 100%);
+            background: #1a1a2e;
             color: #fff;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 20px;
             overflow: hidden;
             user-select: none;
         }
-        h1 { font-size: 28px; margin-bottom: 4px; text-shadow: 0 2px 8px rgba(20,32,92,0.35); }
-        h1 span { color: #f0a500; }
-        .hud {
-            display: flex; justify-content: space-between; align-items: center;
-            width: 500px; padding: 10px 8px; font-size: 14px; color: #1f2a44;
-            background: rgba(255,255,255,0.75); border-radius: 10px 10px 0 0; font-weight: 600;
-        }
-        .hud b { color: #e8850c; }
-        .hud .p1 { color: #0e9f6e; font-weight: 700; }
-        .hud .p2 { color: #a83232; font-weight: 700; }
         canvas {
-            border-radius: 0 0 14px 14px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-            cursor: default;
+            border-radius: 12px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            cursor: crosshair;
         }
-        .tip { margin-top: 14px; font-size: 13px; color: rgba(255,255,255,0.9); }
     </style>
 </head>
 <body>
-    <h1>M.r <span>Racer</span></h1>
-    <div class="hud">
-        <span><span class="p1">YOU</span> 🪙 <b id="c1">0</b></span>
-        <span><span class="p1">YOU</span> <b id="d1">0</b>m</span>
-        <span>vs</span>
-        <span><span class="p2">CPU</span> <b id="d2">0</b>m</span>
-        <span><span class="p2">CPU</span> 🪙 <b id="c2">0</b></span>
-    </div>
-    <canvas id="g" width="500" height="600"></canvas>
-    <div class="tip">Tap <b>A</b> / <b>D</b> or <b>Click left/right</b> to steer — that's it!</div>
-
+    <canvas id="g" width="800" height="600"></canvas>
     <script>
         var c = document.getElementById('g');
-        var x = c.getContext('2d');
-        var W = 500, H = 600;
-        var RL = 50, RR = W - 50, RW = RR - RL;
+        var g = c.getContext('2d');
+        var W = 800, H = 600;
 
-        var S = 'menu';
-        var t = 0;
-        var off = 0;
+        // Game state
+        var state = 'menu';
+        var score = 0;
+        var lives = 3;
+        var mission = 0;
+        var timer = 0;
+        var maxTime = 30;
+        var speed = 0;
+        var maxSpeed = 5;
+        var angle = -Math.PI / 2;
+        var steer = 0;
 
-        var p1 = { px: 0, coins: 0, dist: 0 };
-        var p2 = { px: 0, coins: 0, dist: 0 };
-        var coins = [];
-        var k = {};
-        var spin = 0;
+        // Player car
+        var car = { x: 400, y: 300, w: 30, h: 50 };
 
-        function go() {
-            p1 = { px: RL + RW / 4 - 22, coins: 0, dist: 0 };
-            p2 = { px: RL + RW * 3 / 4 - 22, coins: 0, dist: 0 };
-            coins = [];
-            off = 0;
-            spin = 0;
-            t = 0;
-            S = 'play';
+        // Camera
+        var cam = { x: 0, y: 0 };
+
+        // Map
+        var mapW = 2400;
+        var mapH = 2400;
+
+        // Roads
+        var roads = [];
+        // Main grid
+        for (var i = 0; i <= mapW; i += 400) {
+            roads.push({ x: i - 40, y: 0, w: 80, h: mapH, dir: 'v' });
+        }
+        for (var j = 0; j <= mapH; j += 400) {
+            roads.push({ x: 0, y: j - 40, w: mapW, h: 80, dir: 'h' });
         }
 
-        function hud() {
-            document.getElementById('c1').textContent = p1.coins;
-            document.getElementById('d1').textContent = Math.floor(p1.dist);
-            document.getElementById('c2').textContent = p2.coins;
-            document.getElementById('d2').textContent = Math.floor(p2.dist);
-        }
-
-        function addCoin() {
-            var cols = 4;
-            var cw = RW / cols;
-            var col = Math.floor(Math.random() * cols);
-            var cx = RL + col * cw + cw / 2;
-            coins.push({ px: cx, py: -20 });
-        }
-
-        function drawBG() {
-            var s = x.createLinearGradient(0, 0, 0, H);
-            s.addColorStop(0, '#8ed1f7');
-            s.addColorStop(0.3, '#bfe6ff');
-            s.addColorStop(0.5, '#e8f7ff');
-            x.fillStyle = s;
-            x.fillRect(0, 0, W, H);
-
-            x.fillStyle = 'rgba(255,220,100,0.35)';
-            x.beginPath(); x.arc(W - 60, 55, 40, 0, Math.PI * 2); x.fill();
-            x.fillStyle = '#ffe98a';
-            x.beginPath(); x.arc(W - 60, 55, 28, 0, Math.PI * 2); x.fill();
-
-            x.fillStyle = '#b8bfc9';
-            x.fillRect(0, 0, RL - 6, H);
-            x.fillRect(RR + 6, 0, W - RR - 6, H);
-
-            x.fillStyle = '#5a616e';
-            x.fillRect(RL, 0, RW, H);
-
-            x.fillStyle = '#fff';
-            x.fillRect(RL, 0, 5, H);
-            x.fillRect(RR - 5, 0, 5, H);
-
-            x.strokeStyle = '#f2f4ff';
-            x.lineWidth = 4;
-            x.setLineDash([28, 22]);
-            for (var i = 1; i < 4; i++) {
-                var lx = RL + (RW / 4) * i;
-                x.beginPath();
-                x.moveTo(lx, off % 50);
-                x.lineTo(lx, H);
-                x.stroke();
-            }
-            x.setLineDash([]);
-
-            var n = Math.ceil(H / 80) + 2;
-            for (var side = -1; side <= 1; side += 2) {
-                var left = side < 0;
-                for (var i = 0; i < n; i++) {
-                    var by = ((i * 80 + off * 0.7) % (H + 160)) - 80;
-                    var bh = 80 + ((i * 137) % 120);
-                    var bw = 40 + ((i * 53) % 18);
-                    var bx = left ? RL - bw - 4 : RR + 4;
-                    var cols = ['#d4b896','#c9a87c','#b8946a','#e0c9a6','#cbb08e'];
-                    x.fillStyle = cols[i % cols.length];
-                    x.fillRect(bx, by + 80 - bh, bw, bh);
-                    x.fillStyle = 'rgba(255,255,255,0.4)';
-                    for (var wy = by + 80 - bh + 8; wy < by + 65; wy += 16)
-                        for (var wx = bx + 5; wx < bx + bw - 7; wx += 10)
-                            x.fillRect(wx, wy, 5, 8);
+        // Buildings
+        var buildings = [];
+        for (var bx = 0; bx < mapW; bx += 400) {
+            for (var by = 0; by < mapH; by += 400) {
+                if (Math.random() < 0.7) {
+                    var bw = 80 + Math.random() * 200;
+                    var bh = 80 + Math.random() * 200;
+                    var ox = bx + 100 + Math.random() * (200 - bw / 2);
+                    var oy = by + 100 + Math.random() * (200 - bh / 2);
+                    var colors = ['#d4b896', '#c9a87c', '#b8946a', '#e0c9a6', '#cbb08e', '#8fa3c9', '#a8b7d4'];
+                    buildings.push({ x: ox, y: oy, w: bw, h: bh, c: colors[Math.floor(Math.random() * colors.length)] });
                 }
             }
         }
 
-        function drawLambo(px, py, col, roof, lbl) {
-            var cw = 48, ch = 60;
-
-            if (lbl === 'YOU') {
-                x.shadowColor = '#f0a500';
-                x.shadowBlur = 18;
+        // Traffic cars
+        var traffic = [];
+        function spawnTraffic() {
+            if (traffic.length > 15) return;
+            var road = roads[Math.floor(Math.random() * roads.length)];
+            var t;
+            if (road.dir === 'v') {
+                t = { x: road.x + 20 + Math.random() * 40, y: Math.random() * mapH, vx: 0, vy: (Math.random() < 0.5 ? 1.5 : -1.5), w: 24, h: 40 };
+            } else {
+                t = { x: Math.random() * mapW, y: road.y + 20 + Math.random() * 40, vx: (Math.random() < 0.5 ? 1.5 : -1.5), vy: 0, w: 40, h: 24 };
             }
-
-            x.fillStyle = col;
-            x.beginPath();
-            x.moveTo(px + 5, py);
-            x.lineTo(px + cw - 5, py);
-            x.lineTo(px + cw, py + 14);
-            x.lineTo(px + cw, py + ch - 16);
-            x.lineTo(px + cw - 3, py + ch);
-            x.lineTo(px + 3, py + ch);
-            x.lineTo(px, py + ch - 16);
-            x.lineTo(px, py + 14);
-            x.closePath();
-            x.fill();
-
-            x.fillStyle = roof;
-            x.beginPath();
-            x.moveTo(px + 9, py + 12);
-            x.lineTo(px + cw - 9, py + 12);
-            x.lineTo(px + cw - 5, py + 28);
-            x.lineTo(px + 5, py + 28);
-            x.closePath();
-            x.fill();
-
-            x.fillStyle = '#f0a500';
-            x.fillRect(px + cw / 2 - 3, py + 2, 6, ch - 5);
-
-            x.fillStyle = '#ffe89c';
-            x.beginPath();
-            x.moveTo(px + 1, py + 4); x.lineTo(px + 12, py); x.lineTo(px + 12, py + 7); x.lineTo(px + 1, py + 7);
-            x.closePath(); x.fill();
-            x.beginPath();
-            x.moveTo(px + cw - 1, py + 4); x.lineTo(px + cw - 12, py); x.lineTo(px + cw - 12, py + 7); x.lineTo(px + cw - 1, py + 7);
-            x.closePath(); x.fill();
-
-            x.fillStyle = '#ff4444';
-            x.fillRect(px + 2, py + ch - 5, 12, 3);
-            x.fillRect(px + cw - 14, py + ch - 5, 12, 3);
-
-            x.fillStyle = '#111827';
-            x.fillRect(px - 2, py + 9, 5, 12);
-            x.fillRect(px + cw - 3, py + 9, 5, 12);
-            x.fillRect(px - 2, py + ch - 20, 5, 12);
-            x.fillRect(px + cw - 3, py + ch - 20, 5, 12);
-
-            x.fillStyle = '#cde9ff';
-            x.beginPath();
-            x.moveTo(px + 10, py + 14); x.lineTo(px + cw - 10, py + 14);
-            x.lineTo(px + cw - 6, py + 26); x.lineTo(px + 6, py + 26);
-            x.closePath(); x.fill();
-
-            x.fillStyle = '#fff';
-            x.font = 'bold 10px "Segoe UI"';
-            x.textAlign = 'center';
-            x.fillText(lbl, px + cw / 2, py - 4);
-
-            x.shadowColor = 'transparent';
-            x.shadowBlur = 0;
+            t.c = ['#a83232', '#2b4bd8', '#7a1fa8', '#0e9f6e', '#e11d48'][Math.floor(Math.random() * 5)];
+            traffic.push(t);
         }
 
+        // Missions
+        var missions = [
+            { text: 'Drive to the market', desc: 'Reach the yellow marker', time: 30 },
+            { text: 'Deliver to Victoria Island', desc: 'Get there fast!', time: 25 },
+            { text: 'Pick up a client', desc: 'Drive to the blue marker', time: 20 },
+            { text: 'Airport run', desc: 'Longest drive — don\'t run out of time', time: 35 },
+            { text: 'Final delivery', desc: 'Last mission — prove yourself!', time: 22 }
+        ];
+
+        var target = { x: 0, y: 0 };
+        var targetActive = false;
+        var missionTimer = 0;
+        var missionTimerStart = 0;
+
+        function setTarget() {
+            target.x = 200 + Math.random() * (mapW - 400);
+            target.y = 200 + Math.random() * (mapH - 400);
+            targetActive = true;
+            missionTimer = missions[mission].time * 60;
+            missionTimerStart = missionTimer;
+        }
+
+        function startGame() {
+            score = 0;
+            lives = 3;
+            mission = 0;
+            car.x = 400;
+            car.y = 2000;
+            angle = -Math.PI / 2;
+            speed = 0;
+            traffic = [];
+            for (var i = 0; i < 20; i++) spawnTraffic();
+            setTarget();
+            state = 'play';
+        }
+
+        function nextMission() {
+            mission++;
+            if (mission >= missions.length) {
+                state = 'win';
+                return;
+            }
+            car.x = 400 + Math.random() * 200;
+            car.y = 400 + Math.random() * 200;
+            setTarget();
+        }
+
+        // Controls
+        var keys = {};
+        var shooting = false;
+
+        document.addEventListener('keydown', function(e) {
+            keys[e.key.toLowerCase()] = true;
+            if (state === 'menu' || state === 'win' || state === 'over') {
+                if (e.key === 'Enter' || e.key === ' ') startGame();
+            }
+            e.preventDefault();
+        });
+        document.addEventListener('keyup', function(e) { keys[e.key.toLowerCase()] = false; });
+        c.addEventListener('click', function() {
+            if (state === 'menu' || state === 'win' || state === 'over') startGame();
+        });
+
+        // Physics
         function update() {
-            var spd = 12;
+            // Steering
+            if (keys['a'] || keys['arrowleft']) steer = -0.06;
+            else if (keys['d'] || keys['arrowright']) steer = 0.06;
+            else steer = 0;
 
-            if (k['a'] || k['arrowleft']) p1.px -= spd;
-            if (k['d'] || k['arrowright']) p1.px += spd;
-            p1.px = Math.max(RL + 4, Math.min(RR - 52, p1.px));
+            angle += steer * (speed / maxSpeed);
 
-            var tx = RL + RW * 3 / 4 - 22;
-            var bd = 999;
-            for (var i = 0; i < coins.length; i++) {
-                var cn = coins[i];
-                if (cn.py < p2.py + 40 && cn.py > p2.py - 150) {
-                    var d = Math.abs(cn.px - p2.px - 24);
-                    if (d < bd) { bd = d; tx = cn.px - 24; }
+            // Acceleration
+            if (keys['w'] || keys['arrowup']) speed += 0.12;
+            else if (keys['s'] || keys['arrowdown']) speed -= 0.15;
+            else speed *= 0.97;
+
+            speed = Math.max(-2, Math.min(maxSpeed, speed));
+
+            // Move
+            var nx = car.x + Math.cos(angle) * speed;
+            var ny = car.y + Math.sin(angle) * speed;
+
+            // Boundary check
+            if (nx > 20 && nx < mapW - 20 && ny > 20 && ny < mapH - 20) {
+                car.x = nx;
+                car.y = ny;
+            }
+
+            // Traffic collision
+            for (var i = traffic.length - 1; i >= 0; i--) {
+                var t = traffic[i];
+                t.x += t.vx;
+                t.y += t.vy;
+                if (t.x < -100 || t.x > mapW + 100 || t.y < -100 || t.y > mapH + 100) {
+                    traffic.splice(i, 1);
+                    continue;
+                }
+                var dx = car.x - t.x;
+                var dy = car.y - t.y;
+                if (Math.abs(dx) < 28 && Math.abs(dy) < 40) {
+                    lives--;
+                    speed = 0;
+                    if (lives <= 0) { state = 'over'; return; }
+                    traffic.splice(i, 1);
                 }
             }
-            p2.px += (tx - p2.px) * 0.05;
-            p2.px = Math.max(RL + 4, Math.min(RR - 52, p2.px));
 
-            off += 12;
-            p1.dist += 0.6;
-            p2.dist += 0.6;
-            spin += 0.08;
+            // Respawn traffic
+            if (Math.random() < 0.03) spawnTraffic();
 
-            t++;
-            if (t % 55 === 0) addCoin();
+            // Mission timer
+            missionTimer--;
+            if (missionTimer <= 0) {
+                lives--;
+                if (lives <= 0) { state = 'over'; return; }
+                nextMission();
+                return;
+            }
 
-            for (var i = coins.length - 1; i >= 0; i--) {
-                var cn = coins[i];
-                cn.py += 6;
-                if (cn.py > H + 20) { coins.splice(i, 1); continue; }
-
-                if (cn.px > p1.px - 6 && cn.px < p1.px + 54 && cn.py > p1.py && cn.py < p1.py + 60) {
-                    p1.coins++;
-                    coins.splice(i, 1); continue;
-                }
-                if (cn.px > p2.px - 6 && cn.px < p2.px + 54 && cn.py > p2.py && cn.py < p2.py + 60) {
-                    p2.coins++;
-                    coins.splice(i, 1);
+            // Check target
+            if (targetActive) {
+                var dx = car.x - target.x;
+                var dy = car.y - target.y;
+                if (Math.sqrt(dx * dx + dy * dy) < 60) {
+                    score += 100 + Math.floor(missionTimer / 60) * 10;
+                    targetActive = false;
+                    nextMission();
                 }
             }
-            hud();
+
+            // Camera
+            cam.x = car.x - W / 2;
+            cam.y = car.y - H / 2;
+            cam.x = Math.max(0, Math.min(mapW - W, cam.x));
+            cam.y = Math.max(0, Math.min(mapH - H, cam.y));
+        }
+
+        function drawWorld() {
+            g.fillStyle = '#2d5a27';
+            g.fillRect(0, 0, W, H);
+
+            // Draw buildings
+            for (var i = 0; i < buildings.length; i++) {
+                var b = buildings[i];
+                var sx = b.x - cam.x;
+                var sy = b.y - cam.y;
+                if (sx + b.w < -50 || sx > W + 50 || sy + b.h < -50 || sy > H + 50) continue;
+                g.fillStyle = b.c;
+                g.fillRect(sx, sy, b.w, b.h);
+                g.fillStyle = 'rgba(255,255,255,0.3)';
+                for (var wx = sx + 8; wx < sx + b.w - 8; wx += 16)
+                    for (var wy = sy + 8; wy < sy + b.h - 8; wy += 16)
+                        g.fillRect(wx, wy, 8, 8);
+            }
+
+            // Draw roads
+            g.fillStyle = '#4a4a5a';
+            for (var i = 0; i < roads.length; i++) {
+                var r = roads[i];
+                var sx = r.x - cam.x;
+                var sy = r.y - cam.y;
+                g.fillRect(sx, sy, r.w, r.h);
+                // Lane markings
+                g.strokeStyle = '#fff';
+                g.lineWidth = 2;
+                g.setLineDash([12, 8]);
+                g.beginPath();
+                if (r.dir === 'v') {
+                    g.moveTo(sx + r.w / 2, sy);
+                    g.lineTo(sx + r.w / 2, sy + r.h);
+                } else {
+                    g.moveTo(sx, sy + r.h / 2);
+                    g.lineTo(sx + r.w, sy + r.h / 2);
+                }
+                g.stroke();
+                g.setLineDash([]);
+            }
+
+            // Traffic
+            for (var i = 0; i < traffic.length; i++) {
+                var t = traffic[i];
+                var sx = t.x - cam.x;
+                var sy = t.y - cam.y;
+                g.fillStyle = t.c;
+                g.fillRect(sx - t.w / 2, sy - t.h / 2, t.w, t.h);
+                g.fillStyle = '#ffe89c';
+                if (t.vy !== 0) {
+                    g.fillRect(sx - 4, sy - t.h / 2, 3, 5);
+                    g.fillRect(sx + 1, sy - t.h / 2, 3, 5);
+                } else {
+                    g.fillRect(sx - t.w / 2, sy - 4, 5, 3);
+                    g.fillRect(sx - t.w / 2, sy + 1, 5, 3);
+                }
+            }
+
+            // Player car
+            g.save();
+            g.translate(car.x - cam.x, car.y - cam.y);
+            g.rotate(angle);
+            // Glow
+            g.shadowColor = '#f0a500';
+            g.shadowBlur = 15;
+            g.fillStyle = '#0e9f6e';
+            g.fillRect(-12, -22, 24, 44);
+            g.fillStyle = '#0a6b4c';
+            g.fillRect(-8, -8, 16, 16);
+            g.fillStyle = '#f0a500';
+            g.fillRect(-2, -24, 4, 48);
+            g.shadowBlur = 0;
+            g.shadowColor = 'transparent';
+            // Headlights
+            g.fillStyle = '#ffe89c';
+            g.fillRect(-10, -22, 6, 4);
+            g.fillRect(4, -22, 6, 4);
+            g.fillStyle = '#ff4444';
+            g.fillRect(-10, 18, 6, 4);
+            g.fillRect(4, 18, 6, 4);
+            g.restore();
+
+            // Target marker
+            if (targetActive) {
+                var tx = target.x - cam.x;
+                var ty = target.y - cam.y;
+                if (tx > -50 && tx < W + 50 && ty > -50 && ty < H + 50) {
+                    g.strokeStyle = '#f0a500';
+                    g.lineWidth = 3;
+                    g.beginPath();
+                    g.arc(tx, ty, 25 + Math.sin(Date.now() * 0.005) * 5, 0, Math.PI * 2);
+                    g.stroke();
+                    g.fillStyle = 'rgba(240,165,0,0.2)';
+                    g.fill();
+                    g.fillStyle = '#f0a500';
+                    g.font = 'bold 14px "Segoe UI"';
+                    g.textAlign = 'center';
+                    g.fillText('TARGET', tx, ty - 35);
+                } else {
+                    // Arrow pointing to target
+                    var dx = target.x - car.x;
+                    var dy = target.y - car.y;
+                    var dist = Math.sqrt(dx * dx + dy * dy);
+                    var ax = W / 2 + (dx / dist) * 180;
+                    var ay = H / 2 + (dy / dist) * 140;
+                    ax = Math.max(30, Math.min(W - 30, ax));
+                    ay = Math.max(30, Math.min(H - 30, ay));
+                    var arrowAngle = Math.atan2(dy, dx);
+                    g.save();
+                    g.translate(ax, ay);
+                    g.rotate(arrowAngle);
+                    g.fillStyle = '#f0a500';
+                    g.beginPath();
+                    g.moveTo(15, 0);
+                    g.lineTo(-8, -10);
+                    g.lineTo(-8, 10);
+                    g.closePath();
+                    g.fill();
+                    g.restore();
+                    g.fillStyle = '#fff';
+                    g.font = '12px "Segoe UI"';
+                    g.textAlign = 'center';
+                    g.fillText(Math.floor(dist) + 'm', ax, ay + 22);
+                }
+            }
+        }
+
+        function drawHUD() {
+            g.fillStyle = 'rgba(0,0,0,0.6)';
+            g.fillRect(10, 10, 240, 80);
+            g.fillStyle = '#fff';
+            g.font = '14px "Segoe UI"';
+            g.textAlign = 'left';
+            g.fillText('Mission: ' + (mission + 1) + '/' + missions.length, 20, 32);
+            g.fillText(missions[mission].text, 20, 52);
+            g.fillText('Lives: ' + '❤️'.repeat(lives), 20, 72);
+
+            g.fillStyle = 'rgba(0,0,0,0.6)';
+            g.fillRect(W - 160, 10, 150, 50);
+            g.fillStyle = '#f0a500';
+            g.font = 'bold 18px "Segoe UI"';
+            g.textAlign = 'right';
+            g.fillText('Score: ' + score, W - 20, 32);
+            var sec = Math.ceil(missionTimer / 60);
+            g.fillStyle = sec < 10 ? '#ff4444' : '#fff';
+            g.font = '14px "Segoe UI"';
+            g.fillText('Time: ' + sec + 's', W - 20, 52);
         }
 
         function draw() {
-            x.clearRect(0, 0, W, H);
-            drawBG();
+            g.clearRect(0, 0, W, H);
 
-            for (var i = 0; i < coins.length; i++) {
-                var cn = coins[i];
-                var s = Math.abs(Math.cos(spin));
-                x.fillStyle = '#ffc93c';
-                x.beginPath(); x.ellipse(cn.px, cn.py, 10 * s + 3, 13, 0, 0, Math.PI * 2); x.fill();
-                x.fillStyle = '#e8850c';
-                x.beginPath(); x.ellipse(cn.px, cn.py, 5 * s + 2, 7, 0, 0, Math.PI * 2); x.fill();
+            if (state === 'menu') {
+                g.fillStyle = '#1a1a2e';
+                g.fillRect(0, 0, W, H);
+                g.textAlign = 'center';
+                g.fillStyle = '#f0a500';
+                g.font = 'bold 52px "Segoe UI"';
+                g.fillText('M.R RACER', W / 2, H / 2 - 80);
+                g.fillStyle = '#fff';
+                g.font = '22px "Segoe UI"';
+                g.fillText('LAGOS MISSIONS', W / 2, H / 2 - 40);
+                g.font = '16px "Segoe UI"';
+                g.fillStyle = '#aab';
+                g.fillText('Drive your Lamborghini through Lagos', W / 2, H / 2 + 10);
+                g.fillText('Complete 5 missions before time runs out', W / 2, H / 2 + 36);
+                g.fillText('W/A/S/D or Arrow keys to drive', W / 2, H / 2 + 62);
+                g.fillStyle = '#ffe98a';
+                g.font = 'bold 20px "Segoe UI"';
+                g.fillText('Click or press Enter to start', W / 2, H / 2 + 110);
+                return;
             }
 
-            drawLambo(p1.px, p1.y, '#0e9f6e', '#0a6b4c', 'YOU');
-            drawLambo(p2.px, p2.y, '#a83232', '#6b1a1a', 'CPU');
+            if (state === 'play') {
+                update();
+                drawWorld();
+                drawHUD();
+                return;
+            }
 
-            if (S === 'menu') {
-                x.fillStyle = 'rgba(20,32,92,0.88)';
-                x.fillRect(0, 0, W, H);
-                x.textAlign = 'center';
-                x.fillStyle = '#f0a500';
-                x.font = 'bold 44px "Segoe UI"';
-                x.fillText('M.R RACER', W / 2, H / 2 - 60);
-                x.fillStyle = '#fff';
-                x.font = '20px "Segoe UI"';
-                x.fillText('YOU  vs  CPU', W / 2, H / 2 - 22);
-                x.font = '16px "Segoe UI"';
-                x.fillStyle = '#dfe5ff';
-                x.fillText('A / D to steer left and right', W / 2, H / 2 + 14);
-                x.fillText('Grab the coins before the CPU!', W / 2, H / 2 + 40);
-                x.fillStyle = '#ffe98a';
-                x.font = 'bold 22px "Segoe UI"';
-                x.fillText('TAP OR CLICK TO START', W / 2, H / 2 + 90);
+            if (state === 'win') {
+                drawWorld();
+                g.fillStyle = 'rgba(20,32,92,0.85)';
+                g.fillRect(0, 0, W, H);
+                g.textAlign = 'center';
+                g.fillStyle = '#f0a500';
+                g.font = 'bold 48px "Segoe UI"';
+                g.fillText('MISSION COMPLETE!', W / 2, H / 2 - 40);
+                g.fillStyle = '#fff';
+                g.font = '22px "Segoe UI"';
+                g.fillText('Final Score: ' + score, W / 2, H / 2 + 10);
+                g.fillStyle = '#ffe98a';
+                g.font = 'bold 18px "Segoe UI"';
+                g.fillText('Click or Enter to play again', W / 2, H / 2 + 60);
+                return;
+            }
+
+            if (state === 'over') {
+                drawWorld();
+                g.fillStyle = 'rgba(20,10,10,0.85)';
+                g.fillRect(0, 0, W, H);
+                g.textAlign = 'center';
+                g.fillStyle = '#ff4444';
+                g.font = 'bold 48px "Segoe UI"';
+                g.fillText('GAME OVER', W / 2, H / 2 - 40);
+                g.fillStyle = '#fff';
+                g.font = '22px "Segoe UI"';
+                g.fillText('Score: ' + score + '  |  Missions: ' + mission + '/' + missions.length, W / 2, H / 2 + 10);
+                g.fillStyle = '#ffe98a';
+                g.font = 'bold 18px "Segoe UI"';
+                g.fillText('Click or Enter to try again', W / 2, H / 2 + 60);
             }
         }
 
         function loop() {
-            if (S === 'play') update();
             draw();
             requestAnimationFrame(loop);
         }
-
-        p1.y = H - 100;
-        p2.y = H - 100;
-        p1.px = RL + RW / 4 - 22;
-        p2.px = RL + RW * 3 / 4 - 22;
-
-        document.addEventListener('keydown', function(e) {
-            k[e.key.toLowerCase()] = true;
-            if (S === 'menu') go();
-            e.preventDefault();
-        });
-        document.addEventListener('keyup', function(e) { k[e.key.toLowerCase()] = false; });
-        c.addEventListener('click', function() { if (S === 'menu') go(); });
-        c.addEventListener('touchstart', function() { if (S === 'menu') go(); }, { passive: true });
-        document.body.addEventListener('click', function() { if (S === 'menu') go(); });
-        document.body.addEventListener('touchstart', function() { if (S === 'menu') go(); }, { passive: true });
 
         loop();
     </script>
