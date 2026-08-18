@@ -1,457 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M.r Racer — Lagos Missions</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: "Segoe UI", Arial, sans-serif;
-            background: #1a1a2e;
-            color: #fff;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            user-select: none;
-        }
-        canvas {
-            border-radius: 12px;
-            box-shadow: 0 0 40px rgba(0,0,0,0.5);
-            cursor: crosshair;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M.r Racer — Lagos Checkpoint Race</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Segoe UI",Arial,sans-serif;background:#1a1a2e;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;user-select:none}
+canvas{border-radius:12px;box-shadow:0 0 40px rgba(0,0,0,0.5)}
+</style>
 </head>
 <body>
-    <canvas id="g" width="800" height="600"></canvas>
-    <script>
-        var c = document.getElementById('g');
-        var g = c.getContext('2d');
-        var W = 800, H = 600;
+<canvas id="g" width="800" height="600"></canvas>
+<script>
+var c=document.getElementById("g"),g=c.getContext("2d"),W=800,H=600;
+var state="menu",score=0,bestTime=999;
+var car={x:0,y:0,a:-Math.PI/2,s:0};
+var maxSpd=5.5,cam={x:0,y:0};
+var MW=2800,MH=2800;
 
-        // Game state
-        var state = 'menu';
-        var score = 0;
-        var lives = 3;
-        var mission = 0;
-        var timer = 0;
-        var maxTime = 30;
-        var speed = 0;
-        var maxSpeed = 5;
-        var angle = -Math.PI / 2;
-        var steer = 0;
+var roads=[];
+for(var i=0;i<=MW;i+=350)roads.push({x:i-45,y:0,w:90,h:MH,d:"v"});
+for(var j=0;j<=MH;j+=350)roads.push({x:0,y:j-45,w:MW,h:90,d:"h"});
 
-        // Player car
-        var car = { x: 400, y: 300, w: 30, h: 50 };
+var bldgs=[];
+for(var bx=0;bx<MW;bx+=350)for(var by=0;by<MH;by+=350){
+  if(Math.random()<0.6){
+    var bw=60+Math.random()*180,bh=60+Math.random()*180;
+    bldgs.push({x:bx+80+Math.random()*(180-bw/2),y:by+80+Math.random()*(180-bh/2),w:bw,h:bh,
+    c:["#d4b896","#c9a87c","#b8946a","#e0c9a6","#cbb08e","#8fa3c9"][~~(Math.random()*6)]});
+  }
+}
 
-        // Camera
-        var cam = { x: 0, y: 0 };
+var tCars=[];
+function spawnT(){if(tCars.length>12)return;var r=roads[~~(Math.random()*roads.length)],t;
+if(r.d==="v"){t={x:r.x+25,y:Math.random()*MH,vx:0,vy:Math.random()<.5?1.8:-1.8,w:22,h:36};}
+else{t={x:Math.random()*MW,y:r.y+25,vx:Math.random()<.5?1.8:-1.8,vy:0,w:36,h:22};}
+t.c=["#a83232","#2b4bd8","#7a1fa8","#0e9f6e","#e11d48"][~~(Math.random()*5)];tCars.push(t);}
 
-        // Map
-        var mapW = 2400;
-        var mapH = 2400;
+var cps=[],cpIdx=0,tLeft=0,tTotal=120*60;
+function genCP(){
+  cps=[
+    {x:350,y:2500,l:"START"},
+    {x:2200,y:2200,l:"Checkpoint 1"},
+    {x:2500,y:700,l:"Checkpoint 2"},
+    {x:700,y:400,l:"Checkpoint 3"},
+    {x:400,y:1400,l:"Checkpoint 4"},
+    {x:1400,y:1400,l:"FINISH"}
+  ];
+}
 
-        // Roads
-        var roads = [];
-        // Main grid
-        for (var i = 0; i <= mapW; i += 400) {
-            roads.push({ x: i - 40, y: 0, w: 80, h: mapH, dir: 'v' });
-        }
-        for (var j = 0; j <= mapH; j += 400) {
-            roads.push({ x: 0, y: j - 40, w: mapW, h: 80, dir: 'h' });
-        }
+function startRace(){
+  genCP();cpIdx=0;car.x=cps[0].x;car.y=cps[0].y;car.a=-Math.PI/2;car.s=0;
+  tLeft=tTotal;score=0;tCars=[];for(var i=0;i<15;i++)spawnT();state="play";
+}
 
-        // Buildings
-        var buildings = [];
-        for (var bx = 0; bx < mapW; bx += 400) {
-            for (var by = 0; by < mapH; by += 400) {
-                if (Math.random() < 0.7) {
-                    var bw = 80 + Math.random() * 200;
-                    var bh = 80 + Math.random() * 200;
-                    var ox = bx + 100 + Math.random() * (200 - bw / 2);
-                    var oy = by + 100 + Math.random() * (200 - bh / 2);
-                    var colors = ['#d4b896', '#c9a87c', '#b8946a', '#e0c9a6', '#cbb08e', '#8fa3c9', '#a8b7d4'];
-                    buildings.push({ x: ox, y: oy, w: bw, h: bh, c: colors[Math.floor(Math.random() * colors.length)] });
-                }
-            }
-        }
+function finishRace(){
+  var elapsed=(tTotal-tLeft)/60;
+  if(elapsed<bestTime)bestTime=elapsed;
+  score=Math.floor(tLeft/60*500+elapsed<60?1000:elapsed<90?500:0);
+  state="done";
+}
 
-        // Traffic cars
-        var traffic = [];
-        function spawnTraffic() {
-            if (traffic.length > 15) return;
-            var road = roads[Math.floor(Math.random() * roads.length)];
-            var t;
-            if (road.dir === 'v') {
-                t = { x: road.x + 20 + Math.random() * 40, y: Math.random() * mapH, vx: 0, vy: (Math.random() < 0.5 ? 1.5 : -1.5), w: 24, h: 40 };
-            } else {
-                t = { x: Math.random() * mapW, y: road.y + 20 + Math.random() * 40, vx: (Math.random() < 0.5 ? 1.5 : -1.5), vy: 0, w: 40, h: 24 };
-            }
-            t.c = ['#a83232', '#2b4bd8', '#7a1fa8', '#0e9f6e', '#e11d48'][Math.floor(Math.random() * 5)];
-            traffic.push(t);
-        }
+var keys={};
+document.addEventListener("keydown",function(e){
+  keys[e.key.toLowerCase()]=true;
+  if(state==="menu"||state==="done"||state==="over")if(e.key==="Enter"||e.key===" ")startRace();
+  if(["arrowup","arrowdown","arrowleft","arrowright"," "].indexOf(e.key.toLowerCase())>-1)e.preventDefault();
+});
+document.addEventListener("keyup",function(e){keys[e.key.toLowerCase()]=false;});
+c.addEventListener("click",function(){if(state!=="play")startRace();});
 
-        // Missions
-        var missions = [
-            { text: 'Drive to the market', desc: 'Reach the yellow marker', time: 30 },
-            { text: 'Deliver to Victoria Island', desc: 'Get there fast!', time: 25 },
-            { text: 'Pick up a client', desc: 'Drive to the blue marker', time: 20 },
-            { text: 'Airport run', desc: 'Longest drive — don\'t run out of time', time: 35 },
-            { text: 'Final delivery', desc: 'Last mission — prove yourself!', time: 22 }
-        ];
+function update(){
+  var sa=0.055*(car.s/maxSpd);
+  if(keys["a"]||keys["arrowleft"])car.a-=sa;
+  if(keys["d"]||keys["arrowright"])car.a+=sa;
+  if(keys["w"]||keys["arrowup"])car.s+=0.1;
+  else if(keys["s"]||keys["arrowdown"])car.s-=0.12;
+  else car.s*=0.96;
+  car.s=Math.max(-1.5,Math.min(maxSpd,car.s));
+  var nx=car.x+Math.cos(car.a)*car.s,ny=car.y+Math.sin(car.a)*car.s;
+  if(nx>10&&nx<MW-10&&ny>10&&ny<MH-10){car.x=nx;car.y=ny;}
 
-        var target = { x: 0, y: 0 };
-        var targetActive = false;
-        var missionTimer = 0;
-        var missionTimerStart = 0;
+  for(var i=tCars.length-1;i>=0;i--){
+    var t=tCars[i];t.x+=t.vx;t.y+=t.vy;
+    if(t.x<-100||t.x>MW+100||t.y<-100||t.y>MH+100){tCars.splice(i,1);continue;}
+    if(Math.abs(car.x-t.x)<26&&Math.abs(car.y-t.y)<34){car.s=0;tLeft-=180;tCars.splice(i,1);}
+  }
+  if(Math.random()<0.03)spawnT();
+  tLeft--;if(tLeft<=0){state="over";return;}
+  var cp=cps[cpIdx],dx=car.x-cp.x,dy=car.y-cp.y;
+  if(Math.sqrt(dx*dx+dy*dy)<55){cpIdx++;if(cpIdx>=cps.length){finishRace();return;}}
+  cam.x=Math.max(0,Math.min(MW-W,car.x-W/2));
+  cam.y=Math.max(0,Math.min(MH-H,car.y-H/2));
+}
 
-        function setTarget() {
-            target.x = 200 + Math.random() * (mapW - 400);
-            target.y = 200 + Math.random() * (mapH - 400);
-            targetActive = true;
-            missionTimer = missions[mission].time * 60;
-            missionTimerStart = missionTimer;
-        }
+function drawWorld(){
+  g.fillStyle="#2d5a27";g.fillRect(0,0,W,H);
+  for(var i=0;i<bldgs.length;i++){
+    var b=bldgs[i],sx=b.x-cam.x,sy=b.y-cam.y;
+    if(sx+b.w<-50||sx>W+50||sy+b.h<-50||sy>H+50)continue;
+    g.fillStyle=b.c;g.fillRect(sx,sy,b.w,b.h);
+    g.fillStyle="rgba(255,255,255,0.3)";
+    for(var wx=sx+8;wx<sx+b.w-8;wx+=16)for(var wy=sy+8;wy<sy+b.h-8;wy+=16)g.fillRect(wx,wy,8,8);
+  }
+  g.fillStyle="#4a4a5a";
+  for(var i=0;i<roads.length;i++){
+    var r=roads[i],sx=r.x-cam.x,sy=r.y-cam.y;
+    g.fillRect(sx,sy,r.w,r.h);
+    g.strokeStyle="#fff";g.lineWidth=2;g.setLineDash([12,8]);g.beginPath();
+    if(r.d==="v"){g.moveTo(sx+r.w/2,sy);g.lineTo(sx+r.w/2,sy+r.h);}
+    else{g.moveTo(sx,sy+r.h/2);g.lineTo(sx+r.w,sy+r.h/2);}
+    g.stroke();g.setLineDash([]);
+  }
+  for(var i=0;i<tCars.length;i++){
+    var t=tCars[i],sx=t.x-cam.x,sy=t.y-cam.y;
+    g.fillStyle=t.c;g.fillRect(sx-t.w/2,sy-t.h/2,t.w,t.h);
+  }
+  // Checkpoints
+  for(var i=cpIdx;i<cps.length;i++){
+    var cp=cps[i],sx=cp.x-cam.x,sy=cp.y-cam.y;
+    if(sx<-50||sx>W+50||sy<-50||sy>H+50)continue;
+    var pulse=15+Math.sin(Date.now()*0.005)*5;
+    g.strokeStyle=i===cpIdx?"#f0a500":"#fff";g.lineWidth=i===cpIdx?3:2;
+    g.beginPath();g.arc(sx,sy,pulse,0,Math.PI*2);g.stroke();
+    if(i===cpIdx){g.fillStyle="rgba(240,165,0,0.2)";g.fill();}
+    g.fillStyle=i===cpIdx?"#f0a500":"#fff";g.font="bold 12px 'Segoe UI'";g.textAlign="center";
+    g.fillText(cp.l,sx,sy-pulse-6);
+  }
+  // Arrow to next CP
+  if(cpIdx<cps.length){
+    var cp=cps[cpIdx],dx=cp.x-car.x,dy=cp.y-car.y,dist=Math.sqrt(dx*dx+dy*dy);
+    var ax=W/2+(dx/dist)*180,ay=H/2+(dy/dist)*140;
+    ax=Math.max(30,Math.min(W-30,ax));ay=Math.max(30,Math.min(H-30,ay));
+    var aa=Math.atan2(dy,dx);
+    g.save();g.translate(ax,ay);g.rotate(aa);
+    g.fillStyle="#f0a500";g.beginPath();g.moveTo(15,0);g.lineTo(-8,-10);g.lineTo(-8,10);g.closePath();g.fill();
+    g.restore();
+    g.fillStyle="#fff";g.font="11px 'Segoe UI'";g.textAlign="center";g.fillText(Math.floor(dist)+"m",ax,ay+22);
+  }
+  // Player
+  g.save();g.translate(car.x-cam.x,car.y-cam.y);g.rotate(car.a);
+  g.shadowColor="#f0a500";g.shadowBlur=15;
+  g.fillStyle="#0e9f6e";g.fillRect(-12,-22,24,44);
+  g.fillStyle="#0a6b4c";g.fillRect(-8,-8,16,16);
+  g.fillStyle="#f0a500";g.fillRect(-2,-24,4,48);
+  g.shadowBlur=0;g.shadowColor="transparent";
+  g.fillStyle="#ffe89c";g.fillRect(-10,-22,6,4);g.fillRect(4,-22,6,4);
+  g.fillStyle="#ff4444";g.fillRect(-10,18,6,4);g.fillRect(4,18,6,4);
+  g.restore();
+}
 
-        function startGame() {
-            score = 0;
-            lives = 3;
-            mission = 0;
-            car.x = 400;
-            car.y = 2000;
-            angle = -Math.PI / 2;
-            speed = 0;
-            traffic = [];
-            for (var i = 0; i < 20; i++) spawnTraffic();
-            setTarget();
-            state = 'play';
-        }
+function drawHUD(){
+  g.fillStyle="rgba(0,0,0,0.6)";g.fillRect(10,10,280,85);
+  g.fillStyle="#fff";g.font="13px 'Segoe UI'";g.textAlign="left";
+  g.fillText("Checkpoint "+(cpIdx)+"/5",20,30);
+  g.fillText("Next: "+cps[cpIdx].l,20,48);
+  var sec=Math.ceil(tLeft/60);g.fillStyle=sec<20?"#ff4444":"#fff";
+  g.fillText("Time: "+sec+"s",20,68);
+  g.fillStyle="#0e9f6e";g.fillRect(20,76,Math.max(0,(tLeft/tTotal)*240),4);
 
-        function nextMission() {
-            mission++;
-            if (mission >= missions.length) {
-                state = 'win';
-                return;
-            }
-            car.x = 400 + Math.random() * 200;
-            car.y = 400 + Math.random() * 200;
-            setTarget();
-        }
+  g.fillStyle="rgba(0,0,0,0.6)";g.fillRect(W-150,10,140,50);
+  g.fillStyle="#f0a500";g.font="bold 18px 'Segoe UI'";g.textAlign="right";
+  g.fillText("Score: "+score,W-20,32);
+  g.fillStyle="#fff";g.font="12px 'Segoe UI'";
+  g.fillText("Best: "+(bestTime<999?bestTime.toFixed(1)+"s":"---"),W-20,52);
+}
 
-        // Controls
-        var keys = {};
-        var shooting = false;
+function draw(){
+  g.clearRect(0,0,W,H);
+  if(state==="menu"){
+    g.fillStyle="#1a1a2e";g.fillRect(0,0,W,H);
+    g.textAlign="center";g.fillStyle="#f0a500";g.font="bold 52px 'Segoe UI'";
+    g.fillText("M.R RACER",W/2,H/2-80);
+    g.fillStyle="#fff";g.font="22px 'Segoe UI'";g.fillText("LAGOS CHECKPOINT RACE",W/2,H/2-40);
+    g.font="15px 'Segoe UI'";g.fillStyle="#aab";
+    g.fillText("Race through Lagos, hit 5 checkpoints",W/2,H/2+5);
+    g.fillText("W/A/S/D or Arrow keys to drive",W/2,H/2+30);
+    g.fillText("Avoid traffic — collisions cost 3 seconds",W/2,H/2+55);
+    g.fillStyle="#ffe98a";g.font="bold 20px 'Segoe UI'";
+    g.fillText("Click or Enter to start",W/2,H/2+100);return;
+  }
+  if(state==="play"){update();drawWorld();drawHUD();return;}
+  if(state==="done"){
+    drawWorld();
+    g.fillStyle="rgba(20,32,92,0.85)";g.fillRect(0,0,W,H);
+    g.textAlign="center";g.fillStyle="#f0a500";g.font="bold 48px 'Segoe UI'";
+    g.fillText("RACE COMPLETE!",W/2,H/2-50);
+    g.fillStyle="#fff";g.font="22px 'Segoe UI'";
+    g.fillText("Score: "+score,W/2,H/2);
+    g.fillText("Time: "+((tTotal-tLeft)/60).toFixed(1)+"s",W/2,H/2+30);
+    if(bestTime<999){g.fillStyle="#0e9f6e";g.fillText("Best: "+bestTime.toFixed(1)+"s",W/2,H/2+60);}
+    g.fillStyle="#ffe98a";g.font="bold 18px 'Segoe UI'";
+    g.fillText("Click or Enter to race again",W/2,H/2+100);return;
+  }
+  if(state==="over"){
+    drawWorld();
+    g.fillStyle="rgba(20,10,10,0.85)";g.fillRect(0,0,W,H);
+    g.textAlign="center";g.fillStyle="#ff4444";g.font="bold 48px 'Segoe UI'";
+    g.fillText("TIME'S UP!",W/2,H/2-40);
+    g.fillStyle="#fff";g.font="22px 'Segoe UI'";
+    g.fillText("Checkpoints: "+cpIdx+"/5   Score: "+score,W/2,H/2+10);
+    g.fillStyle="#ffe98a";g.font="bold 18px 'Segoe UI'";
+    g.fillText("Click or Enter to try again",W/2,H/2+60);
+  }
+}
 
-        document.addEventListener('keydown', function(e) {
-            keys[e.key.toLowerCase()] = true;
-            if (state === 'menu' || state === 'win' || state === 'over') {
-                if (e.key === 'Enter' || e.key === ' ') startGame();
-            }
-            e.preventDefault();
-        });
-        document.addEventListener('keyup', function(e) { keys[e.key.toLowerCase()] = false; });
-        c.addEventListener('click', function() {
-            if (state === 'menu' || state === 'win' || state === 'over') startGame();
-        });
-
-        // Physics
-        function update() {
-            // Steering
-            if (keys['a'] || keys['arrowleft']) steer = -0.06;
-            else if (keys['d'] || keys['arrowright']) steer = 0.06;
-            else steer = 0;
-
-            angle += steer * (speed / maxSpeed);
-
-            // Acceleration
-            if (keys['w'] || keys['arrowup']) speed += 0.12;
-            else if (keys['s'] || keys['arrowdown']) speed -= 0.15;
-            else speed *= 0.97;
-
-            speed = Math.max(-2, Math.min(maxSpeed, speed));
-
-            // Move
-            var nx = car.x + Math.cos(angle) * speed;
-            var ny = car.y + Math.sin(angle) * speed;
-
-            // Boundary check
-            if (nx > 20 && nx < mapW - 20 && ny > 20 && ny < mapH - 20) {
-                car.x = nx;
-                car.y = ny;
-            }
-
-            // Traffic collision
-            for (var i = traffic.length - 1; i >= 0; i--) {
-                var t = traffic[i];
-                t.x += t.vx;
-                t.y += t.vy;
-                if (t.x < -100 || t.x > mapW + 100 || t.y < -100 || t.y > mapH + 100) {
-                    traffic.splice(i, 1);
-                    continue;
-                }
-                var dx = car.x - t.x;
-                var dy = car.y - t.y;
-                if (Math.abs(dx) < 28 && Math.abs(dy) < 40) {
-                    lives--;
-                    speed = 0;
-                    if (lives <= 0) { state = 'over'; return; }
-                    traffic.splice(i, 1);
-                }
-            }
-
-            // Respawn traffic
-            if (Math.random() < 0.03) spawnTraffic();
-
-            // Mission timer
-            missionTimer--;
-            if (missionTimer <= 0) {
-                lives--;
-                if (lives <= 0) { state = 'over'; return; }
-                nextMission();
-                return;
-            }
-
-            // Check target
-            if (targetActive) {
-                var dx = car.x - target.x;
-                var dy = car.y - target.y;
-                if (Math.sqrt(dx * dx + dy * dy) < 60) {
-                    score += 100 + Math.floor(missionTimer / 60) * 10;
-                    targetActive = false;
-                    nextMission();
-                }
-            }
-
-            // Camera
-            cam.x = car.x - W / 2;
-            cam.y = car.y - H / 2;
-            cam.x = Math.max(0, Math.min(mapW - W, cam.x));
-            cam.y = Math.max(0, Math.min(mapH - H, cam.y));
-        }
-
-        function drawWorld() {
-            g.fillStyle = '#2d5a27';
-            g.fillRect(0, 0, W, H);
-
-            // Draw buildings
-            for (var i = 0; i < buildings.length; i++) {
-                var b = buildings[i];
-                var sx = b.x - cam.x;
-                var sy = b.y - cam.y;
-                if (sx + b.w < -50 || sx > W + 50 || sy + b.h < -50 || sy > H + 50) continue;
-                g.fillStyle = b.c;
-                g.fillRect(sx, sy, b.w, b.h);
-                g.fillStyle = 'rgba(255,255,255,0.3)';
-                for (var wx = sx + 8; wx < sx + b.w - 8; wx += 16)
-                    for (var wy = sy + 8; wy < sy + b.h - 8; wy += 16)
-                        g.fillRect(wx, wy, 8, 8);
-            }
-
-            // Draw roads
-            g.fillStyle = '#4a4a5a';
-            for (var i = 0; i < roads.length; i++) {
-                var r = roads[i];
-                var sx = r.x - cam.x;
-                var sy = r.y - cam.y;
-                g.fillRect(sx, sy, r.w, r.h);
-                // Lane markings
-                g.strokeStyle = '#fff';
-                g.lineWidth = 2;
-                g.setLineDash([12, 8]);
-                g.beginPath();
-                if (r.dir === 'v') {
-                    g.moveTo(sx + r.w / 2, sy);
-                    g.lineTo(sx + r.w / 2, sy + r.h);
-                } else {
-                    g.moveTo(sx, sy + r.h / 2);
-                    g.lineTo(sx + r.w, sy + r.h / 2);
-                }
-                g.stroke();
-                g.setLineDash([]);
-            }
-
-            // Traffic
-            for (var i = 0; i < traffic.length; i++) {
-                var t = traffic[i];
-                var sx = t.x - cam.x;
-                var sy = t.y - cam.y;
-                g.fillStyle = t.c;
-                g.fillRect(sx - t.w / 2, sy - t.h / 2, t.w, t.h);
-                g.fillStyle = '#ffe89c';
-                if (t.vy !== 0) {
-                    g.fillRect(sx - 4, sy - t.h / 2, 3, 5);
-                    g.fillRect(sx + 1, sy - t.h / 2, 3, 5);
-                } else {
-                    g.fillRect(sx - t.w / 2, sy - 4, 5, 3);
-                    g.fillRect(sx - t.w / 2, sy + 1, 5, 3);
-                }
-            }
-
-            // Player car
-            g.save();
-            g.translate(car.x - cam.x, car.y - cam.y);
-            g.rotate(angle);
-            // Glow
-            g.shadowColor = '#f0a500';
-            g.shadowBlur = 15;
-            g.fillStyle = '#0e9f6e';
-            g.fillRect(-12, -22, 24, 44);
-            g.fillStyle = '#0a6b4c';
-            g.fillRect(-8, -8, 16, 16);
-            g.fillStyle = '#f0a500';
-            g.fillRect(-2, -24, 4, 48);
-            g.shadowBlur = 0;
-            g.shadowColor = 'transparent';
-            // Headlights
-            g.fillStyle = '#ffe89c';
-            g.fillRect(-10, -22, 6, 4);
-            g.fillRect(4, -22, 6, 4);
-            g.fillStyle = '#ff4444';
-            g.fillRect(-10, 18, 6, 4);
-            g.fillRect(4, 18, 6, 4);
-            g.restore();
-
-            // Target marker
-            if (targetActive) {
-                var tx = target.x - cam.x;
-                var ty = target.y - cam.y;
-                if (tx > -50 && tx < W + 50 && ty > -50 && ty < H + 50) {
-                    g.strokeStyle = '#f0a500';
-                    g.lineWidth = 3;
-                    g.beginPath();
-                    g.arc(tx, ty, 25 + Math.sin(Date.now() * 0.005) * 5, 0, Math.PI * 2);
-                    g.stroke();
-                    g.fillStyle = 'rgba(240,165,0,0.2)';
-                    g.fill();
-                    g.fillStyle = '#f0a500';
-                    g.font = 'bold 14px "Segoe UI"';
-                    g.textAlign = 'center';
-                    g.fillText('TARGET', tx, ty - 35);
-                } else {
-                    // Arrow pointing to target
-                    var dx = target.x - car.x;
-                    var dy = target.y - car.y;
-                    var dist = Math.sqrt(dx * dx + dy * dy);
-                    var ax = W / 2 + (dx / dist) * 180;
-                    var ay = H / 2 + (dy / dist) * 140;
-                    ax = Math.max(30, Math.min(W - 30, ax));
-                    ay = Math.max(30, Math.min(H - 30, ay));
-                    var arrowAngle = Math.atan2(dy, dx);
-                    g.save();
-                    g.translate(ax, ay);
-                    g.rotate(arrowAngle);
-                    g.fillStyle = '#f0a500';
-                    g.beginPath();
-                    g.moveTo(15, 0);
-                    g.lineTo(-8, -10);
-                    g.lineTo(-8, 10);
-                    g.closePath();
-                    g.fill();
-                    g.restore();
-                    g.fillStyle = '#fff';
-                    g.font = '12px "Segoe UI"';
-                    g.textAlign = 'center';
-                    g.fillText(Math.floor(dist) + 'm', ax, ay + 22);
-                }
-            }
-        }
-
-        function drawHUD() {
-            g.fillStyle = 'rgba(0,0,0,0.6)';
-            g.fillRect(10, 10, 240, 80);
-            g.fillStyle = '#fff';
-            g.font = '14px "Segoe UI"';
-            g.textAlign = 'left';
-            g.fillText('Mission: ' + (mission + 1) + '/' + missions.length, 20, 32);
-            g.fillText(missions[mission].text, 20, 52);
-            g.fillText('Lives: ' + '❤️'.repeat(lives), 20, 72);
-
-            g.fillStyle = 'rgba(0,0,0,0.6)';
-            g.fillRect(W - 160, 10, 150, 50);
-            g.fillStyle = '#f0a500';
-            g.font = 'bold 18px "Segoe UI"';
-            g.textAlign = 'right';
-            g.fillText('Score: ' + score, W - 20, 32);
-            var sec = Math.ceil(missionTimer / 60);
-            g.fillStyle = sec < 10 ? '#ff4444' : '#fff';
-            g.font = '14px "Segoe UI"';
-            g.fillText('Time: ' + sec + 's', W - 20, 52);
-        }
-
-        function draw() {
-            g.clearRect(0, 0, W, H);
-
-            if (state === 'menu') {
-                g.fillStyle = '#1a1a2e';
-                g.fillRect(0, 0, W, H);
-                g.textAlign = 'center';
-                g.fillStyle = '#f0a500';
-                g.font = 'bold 52px "Segoe UI"';
-                g.fillText('M.R RACER', W / 2, H / 2 - 80);
-                g.fillStyle = '#fff';
-                g.font = '22px "Segoe UI"';
-                g.fillText('LAGOS MISSIONS', W / 2, H / 2 - 40);
-                g.font = '16px "Segoe UI"';
-                g.fillStyle = '#aab';
-                g.fillText('Drive your Lamborghini through Lagos', W / 2, H / 2 + 10);
-                g.fillText('Complete 5 missions before time runs out', W / 2, H / 2 + 36);
-                g.fillText('W/A/S/D or Arrow keys to drive', W / 2, H / 2 + 62);
-                g.fillStyle = '#ffe98a';
-                g.font = 'bold 20px "Segoe UI"';
-                g.fillText('Click or press Enter to start', W / 2, H / 2 + 110);
-                return;
-            }
-
-            if (state === 'play') {
-                update();
-                drawWorld();
-                drawHUD();
-                return;
-            }
-
-            if (state === 'win') {
-                drawWorld();
-                g.fillStyle = 'rgba(20,32,92,0.85)';
-                g.fillRect(0, 0, W, H);
-                g.textAlign = 'center';
-                g.fillStyle = '#f0a500';
-                g.font = 'bold 48px "Segoe UI"';
-                g.fillText('MISSION COMPLETE!', W / 2, H / 2 - 40);
-                g.fillStyle = '#fff';
-                g.font = '22px "Segoe UI"';
-                g.fillText('Final Score: ' + score, W / 2, H / 2 + 10);
-                g.fillStyle = '#ffe98a';
-                g.font = 'bold 18px "Segoe UI"';
-                g.fillText('Click or Enter to play again', W / 2, H / 2 + 60);
-                return;
-            }
-
-            if (state === 'over') {
-                drawWorld();
-                g.fillStyle = 'rgba(20,10,10,0.85)';
-                g.fillRect(0, 0, W, H);
-                g.textAlign = 'center';
-                g.fillStyle = '#ff4444';
-                g.font = 'bold 48px "Segoe UI"';
-                g.fillText('GAME OVER', W / 2, H / 2 - 40);
-                g.fillStyle = '#fff';
-                g.font = '22px "Segoe UI"';
-                g.fillText('Score: ' + score + '  |  Missions: ' + mission + '/' + missions.length, W / 2, H / 2 + 10);
-                g.fillStyle = '#ffe98a';
-                g.font = 'bold 18px "Segoe UI"';
-                g.fillText('Click or Enter to try again', W / 2, H / 2 + 60);
-            }
-        }
-
-        function loop() {
-            draw();
-            requestAnimationFrame(loop);
-        }
-
-        loop();
-    </script>
+function loop(){draw();requestAnimationFrame(loop);}
+loop();
+</script>
 </body>
 </html>
