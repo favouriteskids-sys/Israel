@@ -28,9 +28,9 @@ var diffBtns=[
 ];
 
 function getDiffSettings(){
-  if(difficulty==="easy")return{time:90,maxTraffic:6,trafficSpd:2,penalty:90,spawnRate:0.025,multiplier:0.7,scrollSpd:2.5};
-  if(difficulty==="hard")return{time:60,maxTraffic:14,trafficSpd:4,penalty:150,spawnRate:0.05,multiplier:1.5,scrollSpd:4};
-  return{time:75,maxTraffic:10,trafficSpd:3,penalty:120,spawnRate:0.035,multiplier:1.0,scrollSpd:3.2};
+  if(difficulty==="easy")return{time:90,maxTraffic:10,trafficSpd:2,penalty:90,spawnRate:0.06,multiplier:0.7,scrollSpd:2.5};
+  if(difficulty==="hard")return{time:60,maxTraffic:18,trafficSpd:4,penalty:150,spawnRate:0.12,multiplier:1.5,scrollSpd:4};
+  return{time:75,maxTraffic:14,trafficSpd:3,penalty:120,spawnRate:0.08,multiplier:1.0,scrollSpd:3.2};
 }
 
 var bldgs=[];
@@ -56,8 +56,10 @@ function spawnT(){
   var ds=getDiffSettings();
   if(tCars.length>=ds.maxTraffic)return;
   var lane=roadX+20+Math.random()*(roadW-60);
-  var goingDown=Math.random()<0.5;
-  tCars.push({x:lane,y:goingDown?-60:-(Math.random()*maxScroll),w:28,h:50,spd:goingDown?ds.trafficSpd:(-ds.trafficSpd*0.3),
+  var fromTop=Math.random()<0.6;
+  var sy=fromTop?-(80+Math.random()*400):(scrollY+H+60+Math.random()*200);
+  var spd=fromTop?(ds.trafficSpd*1.5):(ds.trafficSpd*0.4);
+  tCars.push({x:lane,y:sy,w:28,h:50,spd:spd,
   c:["#a83232","#2b4bd8","#7a1fa8","#0e9f6e","#e11d48"][~~(Math.random()*5)]});
 }
 
@@ -126,10 +128,11 @@ function update(){
   for(var i=tCars.length-1;i>=0;i--){
     var t=tCars[i];
     t.y+=t.spd;
-    if(t.y>scrollY+H+100||t.y<scrollY-200){tCars.splice(i,1);continue;}
+    if(t.y>scrollY+H+100){tCars.splice(i,1);continue;}
     var screenTy=t.y-scrollY;
+    if(screenTy<-80){continue;}
     if(Math.abs(car.x-t.x)<24&&Math.abs(car.y-screenTy)<30){
-      car.s=0;tLeft-=ds.penalty;tCars.splice(i,1);
+      tLeft-=ds.penalty;tCars.splice(i,1);
     }
   }
   if(Math.random()<ds.spawnRate)spawnT();
@@ -159,7 +162,7 @@ function drawWorld(){
   g.fillStyle="#ffcc00";g.fillRect(roadX,0,3,H);g.fillRect(roadX+roadW-3,0,3,H);
 
   for(var i=0;i<tCars.length;i++){
-    var t=tCars[i],sy=t.y-scrollY+car.y;
+    var t=tCars[i],sy=t.y-scrollY;
     if(sy<-60||sy>H+60)continue;
     g.fillStyle=t.c;
     g.beginPath();
