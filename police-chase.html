@@ -3,152 +3,282 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Police Chick</title>
+<title>Police Chase — EstateFlow Arcade</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#f0f4f8;overflow:hidden;user-select:none;font-family:'Segoe UI',system-ui,Arial}
-canvas{display:block;width:100vw;height:100vh}
-h1{margin:20px auto;text-align:center;color:#2b4bd8;font-size:24px}
-.game-wrapper{max-width:420px;margin:auto;padding:20px}
-.score-board{background:white;padding:12px;border-radius:8px;margin:12px 0;text-align:center;color:#2b4bd8; font-size:13px}
-.difficulty-btns{display:flex;gap:6px;justify-content:center;flex-wrap:margin:12px 0 .8em}
-.diff-btn{padding:6px 10px;border:none;border-radius:16px;background:#2b4bd8;color:white;font-size:12px;cursor:pointer}
-.diff-btn:hover{background:#1e3a8a}
-.control-hint{text-align:center;padding:8px;color:#666;font-size:11px; margin-top:4px}
-.info{text-align:center;padding:8px;color:#666;font-size:11px}
+body{background:#f0f4f8;overflow:hidden;font-family:sans-serif}canvas{display:block;width:100vw;height:100vh;cursor:crosshair}
+h1{font-size:30px;margin-bottom:4px;text-shadow:0 2px 10px rgba(255,0,0,0.4)}
+h1 span{color:#ff4444}
+p.sub{color:#aab;font-size:13px;margin-bottom:12px}
+canvas{border-radius:12px;box-shadow:0 0 40px rgba(0,0,0,0.6);cursor:crosshair}
+.info{margin-top:12px;font-size:12px;color:#889}
 </style>
 </head>
 <body>
-<div class="game-wrapper">
-<h1>Police Chase</h1>
-<div class="score-board">Score: <span id="sc">0</span>  Lives: <span id="lv">3</span></div>
-<canvas id="g"></canvas>
-<div class="difficulty-btns">
-  <button class="diff-btn easy active" data-diff="easy">Easy</button>
-  <button class="diff-btn normal" data-diff="normal">Normal</button>
-  <button class="diff-btn hard" data-diff="hard">Hard</button>
-</div>
-<div class="control-hint">A/D or Left/Right = Move • W or Up = Accel • S or Down = Brake</div>
-<div class="info">Dodge cops and bullets — survive as long as you can!</div>
-</div>
+<h1>Police <span>Chase</span></h1>
+<p class="sub">EstateFlow arcade — outrun the cops, survive as long as you can!</p>
+<canvas id="g" width="500" height="650"></canvas>
+<p class="info">A/D steer &bull; W accelerate &bull; S brake &bull; Click or Enter to start</p>
 <script>
-var c=document.getElementById("g"),g=c.getContext("2d"),W=window.innerWidth,H=window.innerHeight;
-c.width=W;c.height=H;
-window.addEventListener("resize",function(){W=window.innerWidth;H=window.innerHeight;c.width=W;c.height=H;});
+var c=document.getElementById("g"),g=c.getContext("2d"),W=500,H=650;
 
-var state="menu",score=0,lives=3,difficulty="normal";
-var roadW=Math.min(320,W*0.45),roadL=(W-roadW)/2,roadR=roadL+roadW;
-var totalLen=6000;
-
-var diffSettings={
-  easy:{maxCops:3,copSpd:1.5,shootChance:0.01,shootAfter:150,scoreMult:0.8,spawnCap:4},
-  hard:{maxCops:6,copSpd:2.5,shootChance:0.04,shootAfter:70,scoreMult:1.5,spawnCap:8},
-  normal:{maxCops:4,copSpd:2.0,shootChance:0.02,shootAfter:120,scoreMult:1.0,spawnCap:6}
-};
-
-function getDiff(){return diffSettings[difficulty]||diffSettings.normal;}
-
-var car={x:W/2-16,y:H-80,w:32,h:56,spd:0};
+var state="menu",score=0,lives=3,speed=0,maxSpd=7;
+var difficulty="normal";
+var car={x:W/2-18,y:H-130,w:36,h:60};
 var cops=[],bullets=[],particles=[];
+var roadW=320,roadL=(W-roadW)/2,roadR=roadL+roadW;
+var off=0,flash=0,invince=0;
+var keys={};
+
+var diffBtns=[
+  {label:"Easy",x:W/2-155,y:H/2+65,w:90,h:36,diff:"easy"},
+  {label:"Normal",x:W/2-45,y:H/2+65,w:90,h:36,diff:"normal"},
+  {label:"Hard",x:W/2+65,y:H/2+65,w:90,h:36,diff:"hard"}
+];
+
+function getDiffSettings(){
+  if(difficulty==="easy")return{initLives:5,maxCops:3,copSpdMul:0.7,shootChance:0.01,shootAfter:150,scoreMult:0.8,spawnCap:4};
+  if(difficulty==="hard")return{initLives:2,maxCops:6,copSpdMul:1.4,shootChance:0.04,shootAfter:70,scoreMult:1.5,spawnCap:8};
+  return{initLives:3,maxCops:4,copSpdMul:1.0,shootChance:0.02,shootAfter:120,scoreMult:1.0,spawnCap:6};
+}
 
 function reset(){
-  var ds=getDiff();score=0;lives=ds.maxCops;difficulty=document.querySelector('.diff-btn.active').getAttribute("data-diff");
-  car.x=W/2-16;car.y=H-80;car.spd=0;cops=[];bullets=[];particles=[];state="play";
+  var ds=getDiffSettings();
+  score=0;lives=ds.initLives;speed=0;
+  car.x=W/2-18;car.y=H-130;
+  cops=[];bullets=[];particles=[];off=0;flash=0;invince=0;
+  for(var i=0;i<3;i++)spawnCop(i);
+  state="play";
 }
 
-function spawnCop(){
-  var ds=getDiff();var lane=roadL+20+Math.random()*(roadW-40);
-  cops.push({x:lane,y:-60-w Math.random()*200,w:28,h:48,spd:ds.copSpd+Math.random()*0.5,c:["#ff6b6b","#5f27cd","#1dd1af"][Math.floor(Math.random()*3)]});
+function spawnCop(delay){
+  var ds=getDiffSettings();
+  var lane=roadL+20+Math.random()*(roadW-60);
+  cops.push({x:lane,y:-80-delay*120,w:32,h:50,s:(1.5+Math.random()*1.5)*ds.copSpdMul,shoot:0,dir:Math.random()<.5?-1:1});
 }
 
-var diffBtns=document.querySelectorAll(".diff-btn");
-diffBtns.forEach(b=>b.addEventListener("click",function(){
-  diffBtns.forEach(x=>x.classList.remove("active"));
-  this.classList.add("active");
-  reset();
-}));
+function spawnParticle(x,y,c){
+  for(var i=0;i<6;i++)particles.push({x:x,y:y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,life:20,c:c||"#ff8844"});
+}
 
 document.addEventListener("keydown",function(e){
-  if(state==="menu"){if(e.key==="Enter"||e.key===" "){reset();}return;}
-  if(state==="done"||state==="over"){if(e.key==="Enter"||e.key===" "){reset();}return;}
+  keys[e.key.toLowerCase()]=true;
+  if(state!=="play"&&(e.key==="Enter"||e.key===" "))reset();
   e.preventDefault();
 });
-document.addEventListener("keyup",function(e){});
+document.addEventListener("keyup",function(e){keys[e.key.toLowerCase()]=false;});
+c.addEventListener("click",function(e){
+  if(state==="menu"){
+    var rect=c.getBoundingClientRect();
+    var mx=(e.clientX-rect.left)*(W/rect.width),my=(e.clientY-rect.top)*(H/rect.height);
+    for(var i=0;i<diffBtns.length;i++){
+      var b=diffBtns[i];
+      if(mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h){difficulty=b.diff;return;}
+    }
+    reset();
+  }else if(state!=="play"){reset();}
+});
 
 function update(){
-  var ds=getDiff();
-  if(keys["a"]||keys["arrowleft"]){car.x-=5;car.x=Math.max(roadL+4,Math.min(roadR-car.w-4,car.x));}
-  if(keys["d"]||keys["arrowright"]){car.x+=5;car.x=Math.max(roadL+4,Math.min(roadR-car.w-4,car.x));}
-  if(keys["w"]||keys["arrowup"]){car.spd=Math.min(6,car.spd+0.15);}
-  else if(keys["s"]||keys["arrowdown"]){car.spd=Math.max(0,car.spd-0.2);}
-  else car.spd*=0.97;car.y-=car.spd;
+  // Steer
+  if(keys["a"]||keys["arrowleft"])car.x-=5;
+  if(keys["d"]||keys["arrowright"])car.x+=5;
+  car.x=Math.max(roadL+4,Math.min(roadR-car.w-4,car.x));
 
+  // Accel
+  if(keys["w"]||keys["arrowup"])speed=Math.min(maxSpd,speed+0.15);
+  else if(keys["s"]||keys["arrowdown"])speed=Math.max(0,speed-0.2);
+  else speed*=0.98;
+
+  off+=speed*2+3;
+  score+=Math.floor((speed+1)*getDiffSettings().scoreMult);
+  if(invince>0)invince--;
+  if(flash>0)flash--;
+
+  // Cops
   for(var i=cops.length-1;i>=0;i--){
-    var c=cops[i];c.y+=c.spd;if(c.y>H+60){cops.splice(i,1);spawnCop();continue;}
-    if(Math.abs(car.x-c.x)<20&&car.y+car.h>c.y-10&&car.y<c.y+10){lives--;state="over";}
-    c.shoot++;if(c.shoot>ds.shootAfter&&Math.random()<ds.shootChance){
-      c.shoot=0;bullets.push({x:c.x+c.w/2,y:c.y+c.h,vy:4,vx:(car.x+16-c.x-c.w/2)*0.03});
+    var cp=cops[i];
+    cp.y+=cp.s+speed*0.3;
+    cp.x+=cp.dir*0.5;
+    if(cp.x<roadL+8)cp.dir=1;
+    if(cp.x>roadR-cp.w-8)cp.dir=-1;
+    if(cp.y>H+60){cops.splice(i,1);spawnCop(0);continue;}
+
+    // Collision
+    if(invince<=0&&car.x<cp.x+cp.w&&car.x+car.w>cp.x&&car.y<cp.y+cp.h&&car.y+car.h>cp.y){
+      lives--;invince=90;flash=30;spawnParticle(car.x+car.w/2,car.y,"#ff4444");
+      if(lives<=0){state="over";return;}
+    }
+
+    // Shoot
+    cp.shoot++;
+    var ds=getDiffSettings();
+    if(cp.shoot>ds.shootAfter&&Math.random()<ds.shootChance){
+      cp.shoot=0;
+      bullets.push({x:cp.x+cp.w/2,y:cp.y+cp.h,vy:5,vx:(car.x+car.w/2-cp.x-cp.w/2)*0.02});
     }
   }
-  if(cops.length<ds.spawnCap)spawnCop();
+  if(cops.length<Math.min(getDiffSettings().spawnCap,2+Math.floor(score/3000)))spawnCop(0);
 
+  // Bullets
   for(var i=bullets.length-1;i>=0;i--){
-    var b=bullets[i];b.y+=b.vy;b.x+=b.vx;
-    if(b.y>H+20||b.x<-20||b.x>W+20){bullets.splice(i,1);continue;}
-    if(Math.abs(b.x-(car.x+16))<16&&Math.abs(b.y-(car.y+28))<28){lives--;state="over";}
-    bullets.splice(i,1);
+    var b=bullets[i];
+    b.x+=b.vx;b.y+=b.vy;
+    if(b.y>H+10||b.x<-10||b.x>W+10){bullets.splice(i,1);continue;}
+    if(invince<=0&&Math.abs(b.x-(car.x+car.w/2))<18&&Math.abs(b.y-(car.y+car.h/2))<30){
+      lives--;invince=90;flash=30;bullets.splice(i,1);
+      spawnParticle(car.x+car.w/2,car.y+car.h/2,"#ff4444");
+      if(lives<=0){state="over";return;}
+    }
   }
 
+  // Particles
   for(var i=particles.length-1;i>=0;i--){
-    var p=particles[i];p.x+=Math.random()*2-1;p.y+=Math.random()*2-1;p.life--;if(p.life<=0)particles.splice(i,1);
+    var p=particles[i];
+    p.x+=p.vx;p.y+=p.vy;p.life--;
+    if(p.life<=0)particles.splice(i,1);
   }
+}
+
+function drawRoad(){
+  g.fillStyle="#2c3550";g.fillRect(0,0,W,H);
+
+  // Sidewalks
+  g.fillStyle="#6a6a7a";g.fillRect(roadL-12,0,12,H);g.fillRect(roadR,0,12,H);
+
+  // Road
+  g.fillStyle="#3a3f4a";g.fillRect(roadL,0,roadW,H);
+
+  // Lane lines
+  g.strokeStyle="#fff";g.lineWidth=3;g.setLineDash([20,16]);
+  for(var i=1;i<4;i++){
+    var lx=roadL+(roadW/4)*i;
+    g.beginPath();g.moveTo(lx,off%36);g.lineTo(lx,H);g.stroke();
+  }
+  g.setLineDash([]);
+
+  // Edge lines
+  g.fillStyle="#ffcc00";g.fillRect(roadL,0,3,H);g.fillRect(roadR-3,0,3,H);
+}
+
+function drawCar(x,y,w,h,col,accent,isPlayer){
+  g.fillStyle=col;
+  g.beginPath();
+  g.moveTo(x+4,y);g.lineTo(x+w-4,y);g.lineTo(x+w,y+12);
+  g.lineTo(x+w,y+h-14);g.lineTo(x+w-3,y+h);g.lineTo(x+3,y+h);
+  g.lineTo(x,y+h-14);g.lineTo(x,y+12);g.closePath();g.fill();
+
+  g.fillStyle=accent;
+  g.fillRect(x+6,y+14,w-12,16);
+
+  if(isPlayer){
+    g.fillStyle="#f0a500";g.fillRect(x+w/2-2,y+2,4,h-6);
+  }
+
+  g.fillStyle="#111";
+  g.fillRect(x-2,y+8,5,12);g.fillRect(x+w-3,y+8,5,12);
+  g.fillRect(x-2,y+h-20,5,12);g.fillRect(x+w-3,y+h-20,5,12);
+
+  g.fillStyle="#ffe89c";
+  g.fillRect(x+3,y+2,7,4);g.fillRect(x+w-10,y+2,7,4);
+  g.fillStyle="#ff3333";
+  g.fillRect(x+3,y+h-5,7,4);g.fillRect(x+w-10,y+h-5,7,4);
 }
 
 function draw(){
-  W=window.innerWidth;H=window.innerHeight;c.width=W;c.height=H;roadW=Math.min(320,W*0.45);roadL=(W-roadW)/2;roadR=roadL+roadW;
+  g.clearRect(0,0,W,H);
 
   if(state==="menu"){
-    g.fillStyle="#f0f4f8";g.fillRect(0,0,W,H);
-    g.fillStyle="#2b4bd8";g.font="bold 24px 'Segoe UI'";g.textAlign="center";
-    g.fillText("Police Chase",W/2,H/2-40);
-    g.fillStyle="#666";g.font="12px 'Segoe UI'";g.fillText("Dodge cops and bullets • A/D to move, W/S to speed",W/2,H/2);
-    document.querySelectorAll(".diff-btn").forEach(b=>b.classList.add("active"));
-    requestAnimationFrame(draw);return;
+    g.fillStyle="#1a1a2e";g.fillRect(0,0,W,H);
+    g.textAlign="center";
+    g.fillStyle="#ff4444";g.font="bold 48px 'Segoe UI'";
+    g.fillText("POLICE CHASE",W/2,H/2-70);
+    g.fillStyle="#fff";g.font="18px 'Segoe UI'";
+    g.fillText("Outrun the cops!",W/2,H/2-30);
+    g.font="14px 'Segoe UI'";g.fillStyle="#aab";
+    g.fillText("A/D steer &bull; W accelerate &bull; S brake",W/2,H/2+5);
+    g.fillText("Cops will shoot — dodge their bullets!",W/2,H/2+28);
+    g.fillText("Survive and score as high as you can",W/2,H/2+51);
+    g.fillStyle="#fff";g.font="bold 14px 'Segoe UI'";g.fillText("SELECT DIFFICULTY:",W/2,H/2+88);
+    for(var i=0;i<diffBtns.length;i++){
+      var b=diffBtns[i];
+      g.fillStyle=difficulty===b.diff?"#ff4444":"#334";
+      g.fillRect(b.x,b.y,b.w,b.h);
+      g.fillStyle=difficulty===b.diff?"#fff":"#aab";g.font="bold 15px 'Segoe UI'";g.fillText(b.label,b.x+b.w/2,b.y+24);
+    }
+    g.fillStyle="#ffe98a";g.font="bold 16px 'Segoe UI'";g.fillText("Pick difficulty then click to start",W/2,H/2+135);
+    return;
   }
 
   if(state==="play")update();
-
-  g.fillStyle="#2c3550";g.fillRect(0,0,W,H);
-  g.fillStyle="#3a3f4a";g.fillRect(roadL,0,roadW,H);
-  g.fillStyle="#6a6a7a";g.fillRect(roadL-8,0,8,H);g.fillRect(roadR,0,8,H);
-  g.strokeStyle="#fff";g.lineWidth=2;g.setLineDash([12,6]);g.beginPath();g.moveTo(roadL+roadW/2,0);g.lineTo(roadL+roadW/2,H);g.stroke();g.setLineDash([]);
-
-  for(var i=0;i<cops.length;i++){
-    var c=cops[i];var sy=c.y;g.fillStyle=c.c;g.fillRect(c.x-14,sy-28,32,56);
-    g.fillStyle="#ffd700";g.fillRect(c.x-10,sy-22,20,8);
+  if(state==="over"){
+    // Draw last frame
   }
 
+  drawRoad();
+
+  // Particles
+  for(var i=0;i<particles.length;i++){
+    var p=particles[i];
+    g.globalAlpha=p.life/20;g.fillStyle=p.c;
+    g.beginPath();g.arc(p.x,p.y,3,0,Math.PI*2);g.fill();
+  }
+  g.globalAlpha=1;
+
+  // Bullets
+  g.fillStyle="#ffcc00";
   for(var i=0;i<bullets.length;i++){
-    var b=bullets[i];g.fillStyle="#ff6b6b";g.beginPath();g.arc(b.x,sy||b.y,4,0,Math.PI*2);g.fill();
+    var b=bullets[i];
+    g.beginPath();g.arc(b.x,b.y,4,0,Math.PI*2);g.fill();
   }
 
-  g.fillStyle="#ffd700";g.fillRect(car.x-16,H-80,32,56);
-
-  g.fillStyle="rgba(0,0,0,0.6)";g.fillRect(10,10,150,40);
-  g.fillStyle="#fff";g.font="12px 'Segoe UI'";g.textAlign="left";
-  g.fillText("Score: "+score,20,30);
-  g.fillText("Lives: "+"❤".repeat(lives),20,50);
-
-  if(state==="done"||state==="over"){
-    g.fillStyle="rgba(0,0,0,0.5)";g.fillRect(0,0,W,H);
-    var col=state==="over"?"#dc2626":"#2b4bd8";g.fillStyle=col;g.font="bold 28px 'Segoe UI'";g.textAlign="center";
-    g.fillText(state==="over"?"BUSTED!":"RACE COMPLETE!",W/2,H/2-30);
-    g.fillStyle="#fff";g.font="18px 'Segoe UI'";g.fillText("Final Score: "+score,W/2,H/2+10);
-    g.fillText("Click or Enter to restart",W/2,H/2+50);
+  // Cops
+  for(var i=0;i<cops.length;i++){
+    var cp=cops[i];
+    drawCar(cp.x,cp.y,cp.w,cp.h,"#1a1a3a","#0044aa",false);
+    // Siren
+    if(Math.floor(Date.now()/150)%2===0){
+      g.fillStyle="rgba(255,0,0,0.6)";
+      g.beginPath();g.arc(cp.x+cp.w/2,cp.y-6,6,0,Math.PI*2);g.fill();
+    }else{
+      g.fillStyle="rgba(0,100,255,0.6)";
+      g.beginPath();g.arc(cp.x+cp.w/2,cp.y-6,6,0,Math.PI*2);g.fill();
+    }
   }
-  requestAnimationFrame(draw);
+
+  // Player
+  if(flash<=0||Math.floor(flash/3)%2===0){
+    drawCar(car.x,car.y,car.w,car.h,"#0e9f6e","#0a6b4c",true);
+    if(invince>0){
+      g.strokeStyle="rgba(240,165,0,0.7)";g.lineWidth=2;
+      g.beginPath();g.arc(car.x+car.w/2,car.y+car.h/2,35,0,Math.PI*2);g.stroke();
+    }
+  }
+
+  // HUD
+  g.fillStyle="rgba(0,0,0,0.6)";g.fillRect(10,10,200,55);
+  g.fillStyle="#fff";g.font="14px 'Segoe UI'";g.textAlign="left";
+  g.fillText("Score: "+score+"  ["+difficulty.toUpperCase()+"]",20,30);
+  g.fillText("Lives: "+"&#10084;".repeat(lives),20,50);
+
+  g.fillStyle="rgba(0,0,0,0.6)";g.fillRect(W-120,10,110,35);
+  g.fillStyle="#ff4444";g.font="bold 14px 'Segoe UI'";g.textAlign="right";
+  g.fillText("Wanted: "+Math.min(5,1+Math.floor(score/2000)),W-18,32);
+
+  if(state==="over"){
+    g.fillStyle="rgba(20,5,5,0.85)";g.fillRect(0,0,W,H);
+    g.textAlign="center";
+    g.fillStyle="#ff4444";g.font="bold 48px 'Segoe UI'";
+    g.fillText("BUSTED! ["+difficulty.toUpperCase()+"]",W/2,H/2-40);
+    g.fillStyle="#fff";g.font="22px 'Segoe UI'";
+    g.fillText("Score: "+score,W/2,H/2+5);
+    g.fillStyle="#ffe98a";g.font="bold 18px 'Segoe UI'";
+    g.fillText("Click or Enter to try again",W/2,H/2+50);
+  }
 }
-draw();
+
+function loop(){draw();requestAnimationFrame(loop);}
+loop();
 </script>
 </body>
 </html>
