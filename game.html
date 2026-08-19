@@ -3,274 +3,64 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stack Hero — Defend the Real Stack</title>
+<title>Stack Hero Chick</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#1b2f8a;overflow:hidden;user-select:none;font-family:"Segoe UI",Arial,sans-serif}
-canvas{display:block;width:100vw;height:100vh;cursor:crosshair}
+body{background:#f0f4f8;overflow:hidden;user-select:none;font-family:'Segoe UI',system-ui,Arial}
+canvas{display:block;width:100vw;height:100vh}
+.hud{background:white;padding:12px 16px;border-radius:8px;margin:12px auto;text-align:center;color:#2b4bd8;font-size:13px}
+.controls{text-align:center;padding:8px;color:#666;font-size:11px; margin-bottom:8px}
+.diff-btns{display:flex;gap:6px;justify-content:center;flex-wrap:margin:12px 0 .8em}
+.diff-btn{padding:6px 10px;border:none;border-radius:16px;background:#2b4bd8;color:white;font-size:12px;cursor:pointer}
+.diff-btn:hover{background:#1e3a8a}
 </style>
 </head>
 <body>
+<div class="hud">Score: <span id="sc">0</span>  Floors: <span id="fl">8</span>  Wave: <span id="wa">1</span>  <span id="diffLbl" style="color:#f0a500;font-weight:bold">Normal</span></div>
 <canvas id="game"></canvas>
+<div class="diff-btns">
+  <button class="diff-btn easy active" data-diff="easy">Easy</button>
+  <button class="diff-btn normal" data-diff="normal">Normal</button>
+  <button class="diff-btn hard" data-diff="hard">Hard</button>
+</div>
+<div class="controls">A/D or ← → Move • Mouse Aim • Click Shoot • P Pause</div>
 <script>
-var canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
-var W=window.innerWidth,H=window.innerHeight;
+var canvas=document.getElementById("game"),ctx=canvas.getContext("2d"),W=window.innerWidth,H=window.innerHeight;
 canvas.width=W;canvas.height=H;
-
-window.addEventListener("resize",function(){
-  W=window.innerWidth;H=window.innerHeight;
-  canvas.width=W;canvas.height=H;
-  floorX=W/2-FLOOR_W/2;floorBaseY=H-90;
-});
+window.addEventListener("resize",function(){W=window.innerWidth;H=window.innerHeight;canvas.width=W;canvas.height=H;});
 
 var PLAYER_W=44,PLAYER_H=54,PLAYER_SPEED=5.5;
 var FLOOR_W=150,FLOOR_H=16;
+var state="start",difficulty="normal",score=0,wave=1;
+var hero={x:W/2-PLAYER_W/2,y:H-80};
+var mouse={x:W/2,y:H/2},bullets=[],enemies=[],spawnTimer=0;
+var floors=[],floorX,floorBaseY;
+var diffBtns=document.querySelectorAll(".diff-btn");
 
-var state="start",difficulty="normal";
-var score=0,wave=1;
-var hero={x:W/2-PLAYER_W/2,y:H-120};
-var mouse={x:W/2,y:H/2};
-var bullets=[],enemies=[],spawnTimer=0;
-var floors=[];
-var floorX=W/2-FLOOR_W/2,floorBaseY=H-90;
-
-var diffBtns=[
-  {label:"Easy",x:W/2-155,y:H/2+75,w:90,h:36,diff:"easy"},
-  {label:"Normal",x:W/2-45,y:H/2+75,w:90,h:36,diff:"normal"},
-  {label:"Hard",x:W/2+65,y:H/2+75,w:90,h:36,diff:"hard"}
-];
-
-function getDiffSettings(){
-  if(difficulty==="easy")return{startFloors:10,spawnRate:110,enemySpdMul:0.7,scoreMult:0.8,fireRate:12};
+function getDiff(){if(difficulty==="easy")return{startFloors:10,spawnRate:110,enemySpdMul:0.7,scoreMult:0.8,fireRate:12};
   if(difficulty==="hard")return{startFloors:6,spawnRate:55,enemySpdMul:1.5,scoreMult:1.5,fireRate:18};
-  return{startFloors:8,spawnRate:90,enemySpdMul:1.0,scoreMult:1.0,fireRate:14};
-}
+  return{startFloors:8,spawnRate:90,enemySpdMul:1.0,scoreMult:1.0,fireRate:14};}
 
-function resetFloors(){
-  floors=[];
-  var n=getDiffSettings().startFloors;
-  for(var i=0;i<n;i++)floors.push({x:floorX,y:floorBaseY-i*30});
-}
+diffBtns.forEach(b=>b.addEventListener("click",function(){
+  diffBtns.forEach(x=>x.classList.remove("active"));
+  this.classList.add("active");
+  difficulty=this.getAttribute("data-diff");var ds=getDiff();diffLbl.textContent=ds.startFloors===10?"Easy":ds.startFloors===6?"Hard":"Normal";});
 
-function startGame(){
-  score=0;wave=1;bullets=[];enemies=[];spawnTimer=0;
-  hero={x:W/2-PLAYER_W/2,y:H-120};
-  resetFloors();state="playing";
-}
+var floorX=W/2-FLOOR_W/2,floorBaseY=H-80;
 
-function spawnEnemy(){
-  var ds=getDiffSettings();
-  var side=Math.random()<0.5?-1:1;
-  var speed=(0.7+wave*0.18+Math.random()*0.6)*ds.enemySpdMul;
-  var type=Math.random()<0.25+wave*0.02?"tank":"creep";
-  enemies.push({
-    x:W/2+side*(200+Math.random()*250),y:40,
-    vx:-side*speed,vy:(0.9+wave*0.08)*ds.enemySpdMul,
-    hp:type==="tank"?3:1,r:type==="tank"?22:14,type:type
-  });
-}
+function resetFloors(){floors=[];var n=getDiff().startFloors;for(var i=0;i<n;i++)floors.push({x:floorX,y:floorBaseY-i*28});}
+
+function startGame(){score=0;wave=1;bullets=[];enemies=[];spawnTimer=0;hero={x:W/2-PLAYER_W/2,y:H-80};resetFloors();state="playing";}
+
+function spawnE(){var ds=getDiff();var side=Math.random()<0.5?-1:1;var speed=(0.5+wave*0.1+Math.random()*0.3)*ds.enemySpdMul;var type=Math.random()<0.3?"tank":"creep";enemies.push({x:W/2+side*(150+Math.random()*100),y:40,vx:-side*speed,vy:0.5+Math.random()*0.5,hp:type==="tank"?2:1,r:type==="tank"?16:12,type:type});}
+
+function update(){var ds=getDiff();var dx=0;if(state!="playing")return;if(keys["a"]||keys["arrowleft"]){dx-=1;hero.x=Math.max(16,Math.min(W-64,hero.x));}if(keys["d"]||keys["arrowright"]){dx+=1;hero.x=Math.max(16,Math.min(W-64,hero.x));}for(var i=bullets.length-1;i>=0;i--){var b=bullets[i];b.x+=b.vx;b.y+=b.vy;b.life--;if(b.life<=0||b.x<-30||b.x>W+30||b.y<-30||b.y>H+30){bullets.splice(i,1);continue;}for(var j=enemies.length-1;j>=0;j--){var e=enemies[j];if(Math.hypot(b.x-e.x,b.y-e.y)<e.r+8){enemies.splice(j,1);score+=Math.floor((e.type==="tank"?20:10)*ds.scoreMult);bullets.splice(i,1);}};}spawnTimer++;if(spawnTimer>=Math.max(20,ds.spawnRate-wave*3)){spawnTimer=0;spawnE();}for(var i=enemies.length-1;i>=0;i--){var e=enemies[i];e.x+=e.vx;e.y+=e.vy;e.vx*=0.98;if(Math.hypot(e.x-(hero.x+22),e.y-(hero.y+36))<e.r+20){enemies.splice(i,1);if(floors.length>0){floors.shift();}score+=Math.floor((e.type==="tank"?20:10)*ds.scoreMult);}}if(enemies.length===0&&spawnTimer>40&&floors.length>0){wave++;spawnTimer=0;for(var i=0;i<wave;i++)spawnE();}if(floors.length===0)state="over";}
+
+function draw(){W=window.innerWidth;H=window.innerHeight;canvas.width=W;canvas.height=H;floorX=W/2-FLOOR_W/2;floorBaseY=H-80;hero.y=H-80;diffBtns.forEach(b=>b.classList.toggle("active",difficulty===b.getAttribute("data-diff")));var ds=getDiff();ctx.fillStyle=ds===getDiff()?"#2b4bd8":getDiff().enemySpdMul>1?"#dc2626":"#3b82f6";ctx.fillRect(0,0,W,H);var skyGrad=ctx.createLinearGradient(0,0,0,H);skyGrad.addColorStop(0,"#3b82f6");skyGrad.addColorStop(1,"#f0f4f8");ctx.fillStyle=skyGrad;ctx.fillRect(0,0,W,H);for(var i=0;i<40;i++){ctx.fillStyle="rgba(255,255,255,0.4)";ctx.fillRect((i*137.5)%W,(i*61.7)%(H/2),2,2);}ctx.fillStyle="#1e293b";ctx.fillRect(0,H-32,W,32);floors.forEach(function(fl,i){ctx.fillStyle=i%2===0?"#3b82f6":"#6366f1";ctx.fillRect(fl.x,fl.y,FLOOR_W,FLOOR_H);ctx.fillStyle="#f0a500";ctx.fillRect(fl.x+12,fl.y+8,10,FLOOR_H-16);});var hx=hero.x,hy=hero.y;ctx.fillStyle="#f0a500";ctx.beginPath();ctx.moveTo(hx+PLAYER_W,hy+6);ctx.lineTo(hx+PLAYER_W+18,hy+PLAYER_H);ctx.lineTo(hx+PLAYER_W-6,hy+PLAYER_H);ctx.closePath();ctx.fill();ctx.fillStyle="#3b82f6";ctx.fillRect(hx+8,hy+18,PLAYER_W-16,PLAYER_H-32);ctx.fillStyle="#f5d7e3";ctx.beginPath();ctx.arc(hx+PLAYER_W/2,hy+8,10,0,Math.PI*2);ctx.fill();ctx.fillStyle="#1e293b";ctx.fillRect(hx+PLAYER_W/2-10,hy+6,20,8);ctx.fillStyle="#f0a500";ctx.fillRect(hx+8,hy+PLAYER_H-20,PADER_W-16,8);ctx.fillStyle="#f0a500";bullets.forEach(function(b){ctx.beginPath();ctx.arc(b.x,b.y,5,0,Math.PI*2);ctx.fill();});enemies.forEach(function(e){ctx.fillStyle=e.type==="tank"?"#dc2626":"#6366f1";ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(e.x-e.r/2,e.y-6,5,0,Math.PI*2);ctx.arc(e.x+e.r/2,e.y-6,5,0,Math.PI*2);ctx.fill();if(e.type==="tank"){ctx.fillStyle="#1e293b";ctx.fillRect(e.x-e.r,e.y-e.r-8,e.r*2,5);ctx.fillStyle="#f0a500";ctx.fillRect(e.x-e.r,e.y-e.r-8,(e.r*2)*e.hp/4,5);}}ctx.fillStyle="rgba(0,0,0,0.5)";ctx.fillRect(16,16,180,28);ctx.fillStyle="#fff";ctx.font="bold 13px 'Segoe UI'";ctx.textAlign="left";ctx.fillText("Score: "+score+"  Floors: "+floors.length+"  Wave: "+wave+"  ["+difficulty.toUpperCase()+"]",24,36);if(state==="start"){ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(0,0,W,H);ctx.textAlign="center";ctx.fillStyle="#2b4bd8";ctx.font="bold 32px 'Segoe UI'";ctx.fillText("Stack Hero",W/2,H/2-20);ctx.fillStyle="#f0f4f8";ctx.font="16px 'Segoe UI'";ctx.fillText("Defend the Real Stack! Move with A/D • Aim with mouse • Click to shoot",W/2,H/2+30);ctx.fillStyle="#fff";ctx.font="bold 14px 'Segoe UI'";ctx.fillText("SELECT DIFFICULTY:",W/2,H/2+80);diffBtns.forEach(function(b){ctx.fillStyle=difficulty===b.getAttribute("data-diff")?"#f0a500":"#666";ctx.fillRect(b.x,b.y,b.w,b.h);ctx.fillStyle=difficulty===b.getAttribute("data-diff")?"#1e2d3b":"#666";ctx.font="bold 13px 'Segoe UI'";ctx.fillText(b.getAttribute("data-diff").charAt(0).toUpperCase()+b.getAttribute("data-diff").slice(1),b.x+b.w/2,b.y+20);});ctx.fillStyle="#666";ctx.font="12px 'Segoe UI'";ctx.fillText("Pick difficulty then press Enter or click",W/2,H/2+120);}else if(state==="paused"){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,W,H);ctx.textAlign="center";ctx.fillStyle="#2b4bd8";ctx.font="bold 28px 'Segoe UI'";ctx.fillText("PAUSED",W/2,H/2-10);ctx.fillStyle="#f0f4f8";ctx.font="16px 'Segoe UI'";ctx.fillText("Press P to resume",W/2,H/2+25);}else if(state==="over"){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,W,H);ctx.textAlign="center";ctx.fillStyle="#dc2626";ctx.font="bold 28px 'Segoe UI'";ctx.fillText("GAME OVER",W/2,H/2-20);ctx.fillStyle="#fff";ctx.font="18px 'Segoe UI'";ctx.fillText("Final Score: "+score,W/2,H/2+10);ctx.fillText("Press Enter to restart",W/2,H/2+50);}requestAnimationFrame(draw);}
 
 var keyState={},shooting=false,fireTimer=0;
-
-document.addEventListener("keydown",function(e){
-  keyState[e.key.toLowerCase()]=true;
-  if(e.key==="Enter"&&(state==="start"||state==="over"))startGame();
-  if(e.key.toLowerCase()==="p"){
-    if(state==="playing")state="paused";
-    else if(state==="paused")state="playing";
-  }
-  e.preventDefault();
-});
-document.addEventListener("keyup",function(e){keyState[e.key.toLowerCase()]=false;});
-
-canvas.addEventListener("mousemove",function(e){
-  var rect=canvas.getBoundingClientRect();
-  mouse.x=(e.clientX-rect.left)*(W/rect.width);
-  mouse.y=(e.clientY-rect.top)*(H/rect.height);
-});
-
-canvas.addEventListener("mousedown",function(e){
-  W=window.innerWidth;H=window.innerHeight;
-  floorX=W/2-FLOOR_W/2;floorBaseY=H-90;
-  diffBtns=[
-    {label:"Easy",x:W/2-155,y:H/2+75,w:90,h:36,diff:"easy"},
-    {label:"Normal",x:W/2-45,y:H/2+75,w:90,h:36,diff:"normal"},
-    {label:"Hard",x:W/2+65,y:H/2+75,w:90,h:36,diff:"hard"}
-  ];
-  if(state==="start"){
-    var rect2=canvas.getBoundingClientRect();
-    var mx=(e.clientX-rect2.left)*(W/rect2.width);
-    var my=(e.clientY-rect2.top)*(H/rect2.height);
-    for(var i=0;i<diffBtns.length;i++){
-      var b=diffBtns[i];
-      if(mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h){difficulty=b.diff;return;}
-    }
-    startGame();
-  }else if(state==="over"){startGame();}
-  else{shooting=true;}
-});
-window.addEventListener("mouseup",function(){shooting=false;});
-
-function update(){
-  var dx=0;
-  if(keyState["a"]||keyState["arrowleft"])dx-=1;
-  if(keyState["d"]||keyState["arrowright"])dx+=1;
-  hero.x+=dx*PLAYER_SPEED;
-  hero.x=Math.max(10,Math.min(W-PLAYER_W-10,hero.x));
-
-  for(var i=bullets.length-1;i>=0;i--){
-    var b=bullets[i];
-    b.x+=b.vx;b.y+=b.vy;b.life--;
-    if(b.life<=0||b.x<-20||b.x>W+20||b.y<-20||b.y>H+20){bullets.splice(i,1);continue;}
-    var hit=false;
-    for(var j=enemies.length-1;j>=0;j--){
-      var e=enemies[j];
-      if(Math.hypot(b.x-e.x,b.y-e.y)<e.r+5){
-        e.hp--;
-        if(e.hp<=0){enemies.splice(j,1);score+=Math.floor((e.type==="tank"?30:10)*getDiffSettings().scoreMult);}
-        hit=true;break;
-      }
-    }
-    if(hit)bullets.splice(i,1);
-  }
-
-  var spawnRate=Math.max(30,getDiffSettings().spawnRate-wave*6);
-  spawnTimer++;
-  if(spawnTimer>=spawnRate){spawnTimer=0;spawnEnemy();}
-
-  for(var i=enemies.length-1;i>=0;i--){
-    var e=enemies[i];
-    e.x+=e.vx;e.y+=e.vy;e.vx*=0.995;
-    if(Math.hypot(e.x-(hero.x+PLAYER_W/2),e.y-(hero.y+PLAYER_H/2))<e.r+PLAYER_W/2){
-      e.vx=e.x<hero.x+PLAYER_W/2?-3:3;
-    }
-    var removed=false;
-    for(var f=floors.length-1;f>=0;f--){
-      var fl=floors[f];
-      if(e.y+e.r>fl.y&&e.y-e.r<fl.y+FLOOR_H&&e.x+e.r>fl.x&&e.x-e.r<fl.x+FLOOR_W){
-        floors.splice(f,1);enemies.splice(i,1);removed=true;break;
-      }
-    }
-    if(removed)continue;
-    if(e.y>H-e.r){enemies.splice(i,1);if(floors.length>0)floors.shift();}
-  }
-
-  if(enemies.length===0&&spawnTimer>60&&floors.length>0){
-    wave++;spawnTimer=0;
-    for(var i=0;i<wave;i++)spawnEnemy();
-  }
-  if(floors.length===0)state="over";
-}
-
-function draw(){
-  W=window.innerWidth;H=window.innerHeight;
-  canvas.width=W;canvas.height=H;
-  floorX=W/2-FLOOR_W/2;floorBaseY=H-90;
-  hero.y=H-120;
-  diffBtns=[
-    {label:"Easy",x:W/2-155,y:H/2+75,w:90,h:36,diff:"easy"},
-    {label:"Normal",x:W/2-45,y:H/2+75,w:90,h:36,diff:"normal"},
-    {label:"Hard",x:W/2+65,y:H/2+75,w:90,h:36,diff:"hard"}
-  ];
-
-  var sky=ctx.createLinearGradient(0,0,0,H);
-  sky.addColorStop(0,'#2b4bd8');sky.addColorStop(1,'#eef1ff');
-  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
-
-  ctx.fillStyle='rgba(255,255,255,0.35)';
-  for(var i=0;i<40;i++){ctx.fillRect((i*137.5)%W,(i*61.7)%(H/2),2,2);}
-
-  ctx.fillStyle='#1f2a44';ctx.fillRect(0,H-40,W,40);
-
-  floors.forEach(function(fl,i){
-    ctx.fillStyle=i%2===0?'#2b4bd8':'#3d5af0';
-    ctx.fillRect(fl.x,fl.y,FLOOR_W,FLOOR_H);
-    ctx.fillStyle='#f0a500';ctx.fillRect(fl.x+6,fl.y+3,12,FLOOR_H-6);
-  });
-  ctx.fillStyle='#1b2f8a';ctx.fillRect(floorX+10,floorBaseY+16,FLOOR_W-20,24);
-
-  var hx=hero.x,hy=hero.y;
-  ctx.fillStyle='#f0a500';ctx.beginPath();
-  ctx.moveTo(hx+PLAYER_W,hy+6);ctx.lineTo(hx+PLAYER_W+16,hy+PLAYER_H);ctx.lineTo(hx+PLAYER_W-6,hy+PLAYER_H);
-  ctx.closePath();ctx.fill();
-  ctx.fillStyle='#2b4bd8';ctx.fillRect(hx+4,hy+10,PLAYER_W-8,PLAYER_H-14);
-  ctx.fillStyle='#f5d7a8';ctx.beginPath();ctx.arc(hx+PLAYER_W/2,hy+8,11,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#1f2a44';ctx.fillRect(hx+PLAYER_W/2-10,hy+5,20,5);
-  ctx.fillStyle='#f0a500';ctx.fillRect(hx+4,hy+PLAYER_H-18,PLAYER_W-8,5);
-
-  ctx.strokeStyle='rgba(240,165,0,0.5)';ctx.lineWidth=2;ctx.setLineDash([6,6]);
-  ctx.beginPath();ctx.moveTo(hx+PLAYER_W/2,hy+PLAYER_H/2);ctx.lineTo(mouse.x,mouse.y);ctx.stroke();
-  ctx.setLineDash([]);
-
-  ctx.fillStyle='#f0a500';
-  bullets.forEach(function(b){ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill();});
-
-  enemies.forEach(function(e){
-    ctx.fillStyle=e.type==='tank'?'#a83232':'#7a1fa8';
-    ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#ffffff';ctx.beginPath();
-    ctx.arc(e.x-e.r/2,e.y-4,4,0,Math.PI*2);ctx.arc(e.x+e.r/2,e.y-4,4,0,Math.PI*2);ctx.fill();
-    if(e.type==='tank'){
-      ctx.fillStyle='#1f2a44';ctx.fillRect(e.x-e.r,e.y-e.r-10,e.r*2,5);
-      ctx.fillStyle='#4ade80';ctx.fillRect(e.x-e.r,e.y-e.r-10,(e.r*2)*e.hp/3,5);
-    }
-  });
-
-  ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(10,10,300,30);
-  ctx.fillStyle='#fff';ctx.font="bold 14px 'Segoe UI'";ctx.textAlign='left';
-  ctx.fillText("Score: "+score+"  Floors: "+floors.length+"  Wave: "+wave+"  ["+difficulty.toUpperCase()+"]",20,30);
-
-  if(state==="start"){
-    ctx.fillStyle='rgba(20,32,92,0.82)';ctx.fillRect(0,0,W,H);
-    ctx.textAlign='center';
-    ctx.fillStyle='#f0a500';ctx.font='bold 44px "Segoe UI",Arial';
-    ctx.fillText('STACK HERO',W/2,H/2-50);
-    ctx.fillStyle='#dfe5ff';ctx.font='17px "Segoe UI",Arial';
-    ctx.fillText('Defend the Real Stack!',W/2,H/2);
-    ctx.fillText('Move with A/D • Aim with mouse • Click to shoot',W/2,H/2+28);
-    ctx.fillStyle='#fff';ctx.font='bold 14px "Segoe UI",Arial';
-    ctx.fillText('SELECT DIFFICULTY:',W/2,H/2+65);
-    for(var i=0;i<diffBtns.length;i++){
-      var b=diffBtns[i];
-      ctx.fillStyle=difficulty===b.diff?'#f0a500':'#334';
-      ctx.fillRect(b.x,b.y,b.w,b.h);
-      ctx.fillStyle=difficulty===b.diff?'#1b2f8a':'#aab';
-      ctx.font='bold 15px "Segoe UI",Arial';ctx.fillText(b.label,b.x+b.w/2,b.y+24);
-    }
-    ctx.fillStyle='#ffe98a';ctx.font='15px "Segoe UI",Arial';
-    ctx.fillText('Pick difficulty then press Enter or click',W/2,H/2+135);
-  }else if(state==="paused"){
-    ctx.fillStyle='rgba(20,32,92,0.82)';ctx.fillRect(0,0,W,H);
-    ctx.textAlign='center';ctx.fillStyle='#f0a500';ctx.font='bold 44px "Segoe UI",Arial';
-    ctx.fillText('PAUSED',W/2,H/2-10);
-    ctx.fillStyle='#dfe5ff';ctx.font='17px "Segoe UI",Arial';ctx.fillText('Press P to resume.',W/2,H/2+25);
-  }else if(state==="over"){
-    ctx.fillStyle='rgba(20,32,92,0.82)';ctx.fillRect(0,0,W,H);
-    ctx.textAlign='center';ctx.fillStyle='#f0a500';ctx.font='bold 44px "Segoe UI",Arial';
-    ctx.fillText('THE STACK HAS FALLEN',W/2,H/2-30);
-    ctx.fillStyle='#dfe5ff';ctx.font='17px "Segoe UI",Arial';
-    ctx.fillText('Score: '+score+'  |  Waves: '+(wave-1)+'  |  '+difficulty.toUpperCase(),W/2,H/2+15);
-    ctx.fillText('Press Enter to try again.',W/2,H/2+45);
-  }
-
-  requestAnimationFrame(draw);
-}
-
-function gameLoop(){
-  if(state==="playing"){
-    fireTimer++;
-    if(shooting&&fireTimer>getDiffSettings().fireRate){
-      fireTimer=0;
-      var hx=hero.x+PLAYER_W/2,hy=hero.y+PLAYER_H/2;
-      var ang=Math.atan2(mouse.y-hy,mouse.x-hx);
-      bullets.push({x:hx,y:hy,vx:Math.cos(ang)*9,vy:Math.sin(ang)*9,life:90});
-    }
-    update();
-  }
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-gameLoop();
+document.addEventListener("keydown",function(e){keyState[e.key.toLowerCase()]=true;if(e.key==="Enter"&&(state==="start"||state==="over"))startGame();if(e.key.toLowerCase()==="p"){if(state==="playing")state="paused";else if(state==="paused")state="playing";}e.preventDefault();});
+document.addEventListener("keyup",function(e){keyState[e.key.toLowerCase()]=false;});canvas.addEventListener("mousemove",function(e){var rect=canvas.getBoundingClientRect();mouse.x=(e.clientX-rect.left)*(W/rect.width);mouse.y=(e.clientY-rect.top)*(H/rect.height);});canvas.addEventListener("mousedown",function(e){shooting=true;});window.addEventListener("mouseup",function(){shooting=false;});function gameLoop(){if(state==="playing"){fireTimer++;if(shooting&&fireTimer>getDiff().fireRate){fireTimer=0;var hx=hero.x+PLAYER_W/2,hy=hero.y+PLAYER_H/2;var ang=Math.atan2(mouse.y-hy,mouse.x-hx);bullets.push({x:hx,y:hy,vx:Math.cos(ang)*7,vy:Math.sin(ang)*7,life:60});}update();}draw();requestAnimationFrame(gameLoop);}gameLoop();
 </script>
 </body>
 </html>
